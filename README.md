@@ -31,6 +31,8 @@ Digital feedback system replacing paper-based CCF for UNIMAS Holdings facilities
 - `feature/reporting-analytics` (FR-25 to FR-26)
 - `feature/ai-priority-analysis` (FR-27)
 - `feature/notifications` (FR-28)
+- `feature/authentication-login` (UC-01 to UC-02)
+-  `feature/firebase-core` (Backend: Firebase) 
 
 ### UI Branches
 - `ui/resident-mobile`
