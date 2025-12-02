@@ -19,20 +19,19 @@ Digital feedback system replacing paper-based CCF for UNIMAS Holdings facilities
 
 ### Main Branches
 - `main` - Production ready
-- `testing` - QA testing
 
-### Feature Branches (based on SRS)
-- `feature/complaint-submission` (FR-01 to FR-04)
-- `feature/suggestion-feedback` (FR-05 to FR-07)
-- `feature/user-tracking` (FR-08 to FR-10)
-- `feature/user-management` (FR-11 to FR-15)
-- `feature/admin-dashboard` (FR-16 to FR-20)
-- `feature/maintainer-tasks` (FR-21 to FR-24)
-- `feature/reporting-analytics` (FR-25 to FR-26)
-- `feature/ai-priority-analysis` (FR-27)
-- `feature/notifications` (FR-28)
-- `feature/authentication-login` (UC-01 to UC-02)
--  `feature/firebase-core` (Backend: Firebase) 
+### Features (based on SRS)
+- `complaint-submission` (FR-01 to FR-04)
+- `suggestion-feedback` (FR-05 to FR-07)
+- `user-tracking` (FR-08 to FR-10)
+- `user-management` (FR-11 to FR-15)
+- `admin-dashboard` (FR-16 to FR-20)
+- `maintainer-tasks` (FR-21 to FR-24)
+- `reporting-analytics` (FR-25 to FR-26)
+- `ai-priority-analysis` (FR-27)
+- `notifications` (FR-28)
+- `authentication-login` (UC-01 to UC-02)
+-  `firebase-core` (Backend: Firebase) 
 
 ### UI Branches
 - `ui/resident-mobile`
