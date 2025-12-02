@@ -19,7 +19,6 @@ Digital feedback system replacing paper-based CCF for UNIMAS Holdings facilities
 
 ### Main Branches
 - `main` - Production ready
-- `develop` - Development integration
 - `testing` - QA testing
 
 ### Feature Branches (based on SRS)
@@ -35,17 +34,14 @@ Digital feedback system replacing paper-based CCF for UNIMAS Holdings facilities
 
 ### UI Branches
 - `ui/resident-mobile`
-- `ui/admin-web`
+- `ui/admin-mobile`
 - `ui/maintainer-mobile`
 
 ## Getting Started
 1. Clone repository
-2. Checkout `develop` branch
-3. Create feature branch: `git checkout -b feature/your-feature`
-4. Develop and test
-5. Create PR to `develop`
-6. After review, merge to `develop`
-7. Regular releases to `main`
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Develop and test
+4. If there's no conflict in testing, merge to `main`
 
 ## Development Guidelines
 - Follow Flutter conventions
