@@ -33,4 +33,17 @@ class DatabaseService {
       }
     });
   }
+
+  // Get List of All Maintainers (For Admin Dropdown)
+  Stream<List<UserModel>> get maintainers {
+    return userCollection
+        .where('role', isEqualTo: 'maintainer')
+        .where('isApproved', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+    });
+  }
 }

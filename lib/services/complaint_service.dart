@@ -61,4 +61,24 @@ class ComplaintService {
     // Save to Firestore
     await docRef.set(complaint.toMap());
   }
+
+  // 3. GET ALL COMPLAINTS (Live Stream for Admin)
+  Stream<List<ComplaintModel>> get allComplaints {
+    return complaintCollection
+        .orderBy('timestamp', descending: true) // Newest first
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return ComplaintModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+    });
+  }
+
+  // 4. ASSIGN MAINTAINER
+  Future<void> assignMaintainer(String complaintId, String maintainerId) async {
+    return await complaintCollection.doc(complaintId).update({
+      'assignedTo': maintainerId,
+      'status': 'In Progress', // Automatically move status forward
+    });
+  }
 }
