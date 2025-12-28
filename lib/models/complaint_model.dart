@@ -10,19 +10,21 @@ class ComplaintModel {
   final String status; 
   final String priority; 
   
-  // --- CHANGED: Now a List of Strings ---
+  // Images
   final List<String> imageUrls; 
   
   final DateTime timestamp;
   final String? assignedTo;
   
-  // Maintainer DCR
-  final String? findings;         
-  final String? actionTaken;      
-  final String? inspectionResult; 
+  // --- CHANGED: Non-nullable for easier UI handling ---
+  // We default these to "" so they are never null.
+  final String findings;         
+  final String actionTaken;      
+  final String inspectionResult; 
+  
   final String? adminRemarks;
 
-  // CCF Section 1 Fields
+  // CCF Section 1 Fields (Kept as Nullable)
   final String? fullName;
   final String? userType; 
   final String? matricNo;
@@ -39,12 +41,15 @@ class ComplaintModel {
     required this.category,
     required this.status,
     required this.priority,
-    required this.imageUrls, // Updated Constructor
+    required this.imageUrls,
     required this.timestamp,
     this.assignedTo,
-    this.findings,
-    this.actionTaken,
-    this.inspectionResult,
+    
+    // Initialize with default empty strings
+    this.findings = '', 
+    this.actionTaken = '',
+    this.inspectionResult = '',
+    
     this.adminRemarks,
     this.fullName,
     this.userType,
@@ -63,7 +68,7 @@ class ComplaintModel {
       'category': category,
       'status': status,
       'priority': priority,
-      'imageUrls': imageUrls, // Save as List
+      'imageUrls': imageUrls,
       'timestamp': FieldValue.serverTimestamp(),
       'assignedTo': assignedTo,
       'findings': findings,
@@ -80,15 +85,12 @@ class ComplaintModel {
   }
 
   factory ComplaintModel.fromMap(Map<String, dynamic> data, String documentId) {
-    // --- SAFE MIGRATION LOGIC ---
-    // This prevents crashes if the database still has old "imageUrl" fields.
+    // --- SAFE MIGRATION LOGIC (PRESERVED) ---
     List<String> images = [];
     
     if (data['imageUrls'] != null) {
-      // If it's the new format (List), use it
       images = List<String>.from(data['imageUrls']);
     } else if (data['imageUrl'] != null) {
-      // If it's the old format (String), wrap it in a List
       images = [data['imageUrl']];
     }
 
@@ -101,12 +103,15 @@ class ComplaintModel {
       category: data['category'] ?? 'General',
       status: data['status'] ?? 'Pending',
       priority: data['priority'] ?? 'Low',
-      imageUrls: images, // Use our safe list
+      imageUrls: images, 
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       assignedTo: data['assignedTo'],
-      findings: data['findings'],
-      actionTaken: data['actionTaken'],
-      inspectionResult: data['inspectionResult'],
+      
+      // --- UPDATED: Handle nulls by defaulting to empty string ---
+      findings: data['findings'] ?? '',
+      actionTaken: data['actionTaken'] ?? '',
+      inspectionResult: data['inspectionResult'] ?? '',
+      
       adminRemarks: data['adminRemarks'],
       fullName: data['fullName'],
       userType: data['userType'],

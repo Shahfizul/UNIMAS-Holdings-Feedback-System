@@ -16,7 +16,9 @@ class MaintainerJobDetail extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // --- REJECTION ALERT ---
-            if (job.adminRemarks != null && job.adminRemarks!.isNotEmpty && job.status == 'In Progress')
+            if (job.adminRemarks != null &&
+                job.adminRemarks!.isNotEmpty &&
+                job.status == 'In Progress')
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 20),
@@ -29,15 +31,27 @@ class MaintainerJobDetail extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("⚠️ Job Rejected / Re-opened", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    const Text(
+                      "⚠️ Job Rejected / Re-opened",
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 5),
-                    Text("Admin Reason: \"${job.adminRemarks}\"", style: const TextStyle(color: Colors.black87)),
+                    Text(
+                      "Admin Reason: \"${job.adminRemarks}\"",
+                      style: const TextStyle(color: Colors.black87),
+                    ),
                   ],
                 ),
               ),
 
             // --- 1. CONTACT & LOCATION INFO (NEW) ---
-            const Text("📍 Location & Contact", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text(
+              "📍 Location & Contact",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(15),
@@ -45,7 +59,13 @@ class MaintainerJobDetail extends StatelessWidget {
                 color: Colors.white,
                 border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
@@ -62,11 +82,14 @@ class MaintainerJobDetail extends StatelessWidget {
             const SizedBox(height: 20),
 
             // --- 2. PHOTOS (Horizontal List) ---
-            const Text("📸 Evidence Photos", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text(
+              "📸 Evidence Photos",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
             const SizedBox(height: 10),
             if (job.imageUrls.isNotEmpty)
               SizedBox(
-                height: 250, 
+                height: 250,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: job.imageUrls.length,
@@ -85,10 +108,17 @@ class MaintainerJobDetail extends StatelessWidget {
                           fit: BoxFit.contain, // FIX: Full image visible
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
-                            return const Center(child: CircularProgressIndicator());
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
                           },
                           errorBuilder: (context, error, stackTrace) {
-                             return const Center(child: Icon(Icons.broken_image, color: Colors.grey));
+                            return const Center(
+                              child: Icon(
+                                Icons.broken_image,
+                                color: Colors.grey,
+                              ),
+                            );
                           },
                         ),
                       ),
@@ -96,21 +126,38 @@ class MaintainerJobDetail extends StatelessWidget {
                   },
                 ),
               )
-            else 
-              const Text("No photos attached", style: TextStyle(color: Colors.grey)),
-            
+            else
+              const Text(
+                "No photos attached",
+                style: TextStyle(color: Colors.grey),
+              ),
+
             const SizedBox(height: 20),
 
             // 3. Info
-            Text(job.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              job.title,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             Chip(
-              label: Text(job.priority, style: const TextStyle(color: Colors.white)),
-              backgroundColor: job.priority == 'High' ? Colors.red : Colors.orange,
+              label: Text(
+                job.priority,
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: job.priority == 'High'
+                  ? Colors.red
+                  : Colors.orange,
             ),
             const SizedBox(height: 10),
-            Text("Category: ${job.category}", style: const TextStyle(fontSize: 16, color: Colors.grey)),
+            Text(
+              "Category: ${job.category}",
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
             const Divider(),
-            const Text("Description:", style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              "Description:",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             Text(job.description, style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 40),
 
@@ -121,13 +168,24 @@ class MaintainerJobDetail extends StatelessWidget {
                 height: 50,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.check, color: Colors.white),
-                  label: const Text("Mark as Resolved", style: TextStyle(fontSize: 18, color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  label: const Text(
+                    "Mark as Resolved",
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
                   onPressed: () async {
                     // Pre-fill
-                    final findingsController = TextEditingController(text: job.findings ?? '');
-                    final actionController = TextEditingController(text: job.actionTaken ?? '');
-                    final resultController = TextEditingController(text: job.inspectionResult ?? '');
+                    final findingsController = TextEditingController(
+                      text: job.findings,
+                    );
+                    final actionController = TextEditingController(
+                      text: job.actionTaken,
+                    );
+                    final resultController = TextEditingController(
+                      text: job.inspectionResult,
+                    );
 
                     showDialog(
                       context: context,
@@ -138,32 +196,67 @@ class MaintainerJobDetail extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text("Section 2: Validation", style: TextStyle(fontWeight: FontWeight.bold)),
-                              TextField(controller: findingsController, decoration: const InputDecoration(hintText: "Findings", border: OutlineInputBorder()), maxLines: 2),
-                              const SizedBox(height: 15),
-                              
-                              const Text("Section 3: Action Plan", style: TextStyle(fontWeight: FontWeight.bold)),
-                              TextField(controller: actionController, decoration: const InputDecoration(hintText: "Action Taken", border: OutlineInputBorder()), maxLines: 2),
+                              const Text(
+                                "Section 2: Validation",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              TextField(
+                                controller: findingsController,
+                                decoration: const InputDecoration(
+                                  hintText: "Findings",
+                                  border: OutlineInputBorder(),
+                                ),
+                                maxLines: 2,
+                              ),
                               const SizedBox(height: 15),
 
-                              const Text("Section 4: Work Inspection", style: TextStyle(fontWeight: FontWeight.bold)),
-                              TextField(controller: resultController, decoration: const InputDecoration(hintText: "Result (e.g., Fixed)", border: OutlineInputBorder())),
+                              const Text(
+                                "Section 3: Action Plan",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              TextField(
+                                controller: actionController,
+                                decoration: const InputDecoration(
+                                  hintText: "Action Taken",
+                                  border: OutlineInputBorder(),
+                                ),
+                                maxLines: 2,
+                              ),
+                              const SizedBox(height: 15),
+
+                              const Text(
+                                "Section 4: Work Inspection",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              TextField(
+                                controller: resultController,
+                                decoration: const InputDecoration(
+                                  hintText: "Result (e.g., Fixed)",
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("Cancel"),
+                          ),
                           ElevatedButton(
                             child: const Text("Submit Report"),
                             onPressed: () async {
-                              if (findingsController.text.isEmpty) return; 
+                              if (findingsController.text.isEmpty) return;
                               await ComplaintService().resolveComplaint(
                                 complaintId: job.id,
                                 findings: findingsController.text,
                                 actionTaken: actionController.text,
                                 inspectionResult: resultController.text,
                               );
-                              if (context.mounted) { Navigator.pop(context); Navigator.pop(context); }
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                Navigator.pop(context);
+                              }
                             },
                           ),
                         ],
@@ -173,34 +266,55 @@ class MaintainerJobDetail extends StatelessWidget {
                 ),
               )
             else
-               // --- READ ONLY VIEW (Finished) ---
-               Container(
-                 padding: const EdgeInsets.all(15),
-                 decoration: BoxDecoration(
-                   color: job.status == 'Pending Verification' ? Colors.orange[50] : Colors.green[50],
-                   border: Border.all(color: job.status == 'Pending Verification' ? Colors.orange : Colors.green),
-                   borderRadius: BorderRadius.circular(10),
-                 ),
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     Row(
-                       children: [
-                         Icon(job.status == 'Pending Verification' ? Icons.hourglass_bottom : Icons.check_circle, color: job.status == 'Pending Verification' ? Colors.orange : Colors.green),
-                         const SizedBox(width: 10),
-                         Text(
-                           job.status == 'Pending Verification' ? "Pending Verification" : "Job Verified & Closed", 
-                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: job.status == 'Pending Verification' ? Colors.orange[800] : Colors.green[800])
-                         ),
-                       ],
-                     ),
-                     const Divider(),
-                     _buildRow("Findings:", job.findings),
-                     _buildRow("Action:", job.actionTaken),
-                     _buildRow("Result:", job.inspectionResult),
-                   ],
-                 ),
-               )
+              // --- READ ONLY VIEW (Finished) ---
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: job.status == 'Pending Verification'
+                      ? Colors.orange[50]
+                      : Colors.green[50],
+                  border: Border.all(
+                    color: job.status == 'Pending Verification'
+                        ? Colors.orange
+                        : Colors.green,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          job.status == 'Pending Verification'
+                              ? Icons.hourglass_bottom
+                              : Icons.check_circle,
+                          color: job.status == 'Pending Verification'
+                              ? Colors.orange
+                              : Colors.green,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          job.status == 'Pending Verification'
+                              ? "Pending Verification"
+                              : "Job Verified & Closed",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: job.status == 'Pending Verification'
+                                ? Colors.orange[800]
+                                : Colors.green[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    _buildRow("Findings:", job.findings),
+                    _buildRow("Action:", job.actionTaken),
+                    _buildRow("Result:", job.inspectionResult),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -214,8 +328,22 @@ class MaintainerJobDetail extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 80, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
-          Expanded(child: Text(value ?? "N/A", style: const TextStyle(fontWeight: FontWeight.w500))),
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value ?? "N/A",
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       ),
     );

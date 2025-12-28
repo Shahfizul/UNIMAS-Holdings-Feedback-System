@@ -4,7 +4,8 @@ import '../../models/user_model.dart';
 import '../../models/complaint_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/complaint_service.dart';
-import '../complaint/maintainer_job_detail.dart'; // Creating this next
+import '../complaint/maintainer_job_detail.dart'; 
+import '../../widgets/notification_badge.dart'; // <--- ADD IMPORT
 
 class MaintainerHomeScreen extends StatelessWidget {
   const MaintainerHomeScreen({super.key});
@@ -31,6 +32,10 @@ class MaintainerHomeScreen extends StatelessWidget {
               ],
             ),
             actions: [
+              // --- CHANGED: Notification Badge ---
+              NotificationBadge(userId: user.uid),
+              // -----------------------------------
+
               IconButton(
                 icon: const Icon(Icons.logout),
                 onPressed: () => AuthService().signOut(),
@@ -48,7 +53,6 @@ class MaintainerHomeScreen extends StatelessWidget {
     );
   }
 }
-
 class JobList extends StatelessWidget {
   final String statusFilter;
   const JobList({super.key, required this.statusFilter});

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // <--- 1. Add this import
+import '../../models/user_model.dart';   // <--- 2. Add this import
 import '../../services/auth_service.dart';
 import '../complaint/report_screen.dart';
+import '../../widgets/notification_badge.dart';
 
 class UserHomeScreen extends StatelessWidget {
   const UserHomeScreen({super.key});
@@ -8,17 +11,28 @@ class UserHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AuthService _auth = AuthService();
+    final user = Provider.of<UserModel?>(context); // <--- 3. Get current user
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("User Home"),
-        backgroundColor: Colors.blue,
+        title: const Text("My Dashboard"),
+        backgroundColor: Colors.blue[900],
         actions: [
+          
+          // --- REPLACED SECTION START ---
+          if (user != null) 
+             NotificationBadge(userId: user.uid), // <--- The new live badge
+          // --- REPLACED SECTION END ---
+
+          const SizedBox(width: 10), // Add a little spacing
+
+          // Logout
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
               await _auth.signOut();
             },
-          )
+          ),
         ],
       ),
       body: Center(

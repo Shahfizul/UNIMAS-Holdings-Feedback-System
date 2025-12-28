@@ -38,7 +38,13 @@ class UserModel {
     return UserModel(
       uid: uid,
       email: data['email'] ?? '',
-      role: data['role'] ?? 'resident',
+      // --- THE FIX ---
+      // 1. Handle missing role
+      // 2. Convert to String safely
+      // 3. Force lowercase (fixes 'Maintainer' vs 'maintainer')
+      // 4. Remove extra spaces (.trim)
+      role: (data['role'] ?? 'resident').toString().trim().toLowerCase(),
+      
       isApproved: data['isApproved'] ?? false,
       fullName: data['fullName'],
       idType: data['idType'],
