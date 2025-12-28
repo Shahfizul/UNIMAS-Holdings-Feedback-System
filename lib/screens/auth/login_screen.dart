@@ -42,7 +42,26 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
               child: const Text("Login"),
               onPressed: () async {
-                await _auth.signInWithEmail(_emailController.text.trim(), _passwordController.text.trim());
+                // Show loading indicator if you like
+                
+                String? result = await _auth.signInWithEmail(
+                  _emailController.text.trim(), 
+                  _passwordController.text.trim()
+                );
+
+                if (result == null) {
+                  // Success! The StreamWrapper will handle the navigation to Home
+                } else {
+                  // Failure! Show the error message (e.g. "Account pending approval")
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result),
+                        backgroundColor: Colors.red,
+                      )
+                    );
+                  }
+                }
               },
             ),
           ],

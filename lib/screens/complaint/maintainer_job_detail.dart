@@ -15,6 +15,7 @@ class MaintainerJobDetail extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- REJECTION ALERT ---
             if (job.adminRemarks != null && job.adminRemarks!.isNotEmpty && job.status == 'In Progress')
               Container(
                 width: double.infinity,
@@ -35,19 +36,72 @@ class MaintainerJobDetail extends StatelessWidget {
                 ),
               ),
 
-            // 1. Photo of the Issue
-            if (job.imageUrl != null)
-              ClipRRect(
+            // --- 1. CONTACT & LOCATION INFO (NEW) ---
+            const Text("📍 Location & Contact", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  job.imageUrl!,
-                  width: double.infinity,
-                  fit: BoxFit.contain,
-                ),
+                boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))],
               ),
+              child: Column(
+                children: [
+                  _buildRow("Building:", job.building),
+                  const Divider(),
+                  _buildRow("Room No:", job.roomNumber),
+                  const Divider(),
+                  _buildRow("Resident:", job.fullName),
+                  const Divider(),
+                  _buildRow("Phone:", job.contactNumber),
+                ],
+              ),
+            ),
             const SizedBox(height: 20),
 
-            // 2. Info
+            // --- 2. PHOTOS (Horizontal List) ---
+            const Text("📸 Evidence Photos", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 10),
+            if (job.imageUrls.isNotEmpty)
+              SizedBox(
+                height: 250, 
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: job.imageUrls.length,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      width: 300,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          job.imageUrls[index],
+                          fit: BoxFit.contain, // FIX: Full image visible
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const Center(child: CircularProgressIndicator());
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                             return const Center(child: Icon(Icons.broken_image, color: Colors.grey));
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            else 
+              const Text("No photos attached", style: TextStyle(color: Colors.grey)),
+            
+            const SizedBox(height: 20),
+
+            // 3. Info
             Text(job.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             Chip(
               label: Text(job.priority, style: const TextStyle(color: Colors.white)),
@@ -60,7 +114,7 @@ class MaintainerJobDetail extends StatelessWidget {
             Text(job.description, style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 40),
 
-            // 3. Action Button
+            // 4. Action Button (Submit Report)
             if (job.status == 'In Progress')
               SizedBox(
                 width: double.infinity,
@@ -70,7 +124,7 @@ class MaintainerJobDetail extends StatelessWidget {
                   label: const Text("Mark as Resolved", style: TextStyle(fontSize: 18, color: Colors.white)),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                   onPressed: () async {
-                    // --- FIX: Pre-fill with existing data if it exists ---
+                    // Pre-fill
                     final findingsController = TextEditingController(text: job.findings ?? '');
                     final actionController = TextEditingController(text: job.actionTaken ?? '');
                     final resultController = TextEditingController(text: job.inspectionResult ?? '');
@@ -85,59 +139,31 @@ class MaintainerJobDetail extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text("Section 2: Validation", style: TextStyle(fontWeight: FontWeight.bold)),
-                              TextField(
-                                controller: findingsController,
-                                decoration: const InputDecoration(
-                                  hintText: "Investigation / Findings",
-                                  border: OutlineInputBorder(),
-                                ),
-                                maxLines: 2,
-                              ),
+                              TextField(controller: findingsController, decoration: const InputDecoration(hintText: "Findings", border: OutlineInputBorder()), maxLines: 2),
                               const SizedBox(height: 15),
                               
                               const Text("Section 3: Action Plan", style: TextStyle(fontWeight: FontWeight.bold)),
-                              TextField(
-                                controller: actionController,
-                                decoration: const InputDecoration(
-                                  hintText: "Corrective Plan / Action Taken",
-                                  border: OutlineInputBorder(),
-                                ),
-                                maxLines: 2,
-                              ),
+                              TextField(controller: actionController, decoration: const InputDecoration(hintText: "Action Taken", border: OutlineInputBorder()), maxLines: 2),
                               const SizedBox(height: 15),
 
                               const Text("Section 4: Work Inspection", style: TextStyle(fontWeight: FontWeight.bold)),
-                              TextField(
-                                controller: resultController,
-                                decoration: const InputDecoration(
-                                  hintText: "Result / Status (e.g., Fixed, Needs Parts)",
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
+                              TextField(controller: resultController, decoration: const InputDecoration(hintText: "Result (e.g., Fixed)", border: OutlineInputBorder())),
                             ],
                           ),
                         ),
                         actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text("Cancel"),
-                          ),
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
                           ElevatedButton(
                             child: const Text("Submit Report"),
                             onPressed: () async {
                               if (findingsController.text.isEmpty) return; 
-
                               await ComplaintService().resolveComplaint(
                                 complaintId: job.id,
                                 findings: findingsController.text,
                                 actionTaken: actionController.text,
                                 inspectionResult: resultController.text,
                               );
-                              
-                              if (context.mounted) {
-                                Navigator.pop(context); // Close Dialog
-                                Navigator.pop(context); // Close Screen
-                              }
+                              if (context.mounted) { Navigator.pop(context); Navigator.pop(context); }
                             },
                           ),
                         ],
@@ -147,66 +173,49 @@ class MaintainerJobDetail extends StatelessWidget {
                 ),
               )
             else
-               // --- READ ONLY VIEW ---
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    // Color depends on status
-                    color: job.status == 'Pending Verification' ? Colors.orange[50] : Colors.green[50],
-                    border: Border.all(
-                      color: job.status == 'Pending Verification' ? Colors.orange : Colors.green
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Dynamic Title
-                      Row(
-                        children: [
-                          Icon(
-                            job.status == 'Pending Verification' ? Icons.hourglass_bottom : Icons.check_circle,
-                            color: job.status == 'Pending Verification' ? Colors.orange : Colors.green,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            job.status == 'Pending Verification' ? "Pending Verification" : "Job Verified & Closed", 
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold, 
-                              fontSize: 18, 
-                              color: job.status == 'Pending Verification' ? Colors.orange[800] : Colors.green[800]
-                            )
-                          ),
-                        ],
-                      ),
-                      const Divider(),
-                      _buildRow("Findings:", job.findings),
-                      _buildRow("Action:", job.actionTaken),
-                      _buildRow("Result:", job.inspectionResult),
-                      
-                      // Show Rejection Note if it happened
-                      if (job.status == 'In Progress') // This handles if it was rejected
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10.0),
-                          child: Text("⚠️ Admin Note: Please fix this!", style: TextStyle(color: Colors.red)),
-                        ),
-                    ],
-                  ),
+               // --- READ ONLY VIEW (Finished) ---
+               Container(
+                 padding: const EdgeInsets.all(15),
+                 decoration: BoxDecoration(
+                   color: job.status == 'Pending Verification' ? Colors.orange[50] : Colors.green[50],
+                   border: Border.all(color: job.status == 'Pending Verification' ? Colors.orange : Colors.green),
+                   borderRadius: BorderRadius.circular(10),
+                 ),
+                 child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     Row(
+                       children: [
+                         Icon(job.status == 'Pending Verification' ? Icons.hourglass_bottom : Icons.check_circle, color: job.status == 'Pending Verification' ? Colors.orange : Colors.green),
+                         const SizedBox(width: 10),
+                         Text(
+                           job.status == 'Pending Verification' ? "Pending Verification" : "Job Verified & Closed", 
+                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: job.status == 'Pending Verification' ? Colors.orange[800] : Colors.green[800])
+                         ),
+                       ],
+                     ),
+                     const Divider(),
+                     _buildRow("Findings:", job.findings),
+                     _buildRow("Action:", job.actionTaken),
+                     _buildRow("Result:", job.inspectionResult),
+                   ],
+                 ),
                )
           ],
         ),
       ),
     );
   }
+
   // Helper for text rows
   Widget _buildRow(String label, String? value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(width: 80, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
-          Expanded(child: Text(value ?? "N/A")),
+          Expanded(child: Text(value ?? "N/A", style: const TextStyle(fontWeight: FontWeight.w500))),
         ],
       ),
     );

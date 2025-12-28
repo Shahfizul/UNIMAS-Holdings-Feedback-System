@@ -9,15 +9,26 @@ class ComplaintModel {
   final String category;
   final String status; 
   final String priority; 
-  final String? imageUrl;
+  
+  // --- CHANGED: Now a List of Strings ---
+  final List<String> imageUrls; 
+  
   final DateTime timestamp;
   final String? assignedTo;
   
-  // --- NEW: CCF Digital Completion Fields ---
-  final String? findings;         // Section 2: Validation/Investigation
-  final String? actionTaken;      // Section 3: Action Plan/Rectification
-  final String? inspectionResult; // Section 4: Work Inspection/Status
-  final String? adminRemarks; // <--- NEW: Stores the rejection reason
+  // Maintainer DCR
+  final String? findings;         
+  final String? actionTaken;      
+  final String? inspectionResult; 
+  final String? adminRemarks;
+
+  // CCF Section 1 Fields
+  final String? fullName;
+  final String? userType; 
+  final String? matricNo;
+  final String? contactNumber;
+  final String? building;
+  final String? roomNumber;
 
   ComplaintModel({
     required this.id,
@@ -28,14 +39,19 @@ class ComplaintModel {
     required this.category,
     required this.status,
     required this.priority,
-    this.imageUrl,
+    required this.imageUrls, // Updated Constructor
     required this.timestamp,
     this.assignedTo,
-    // --- NEW ---
     this.findings,
     this.actionTaken,
     this.inspectionResult,
-    this.adminRemarks, // <--- Add to constructor
+    this.adminRemarks,
+    this.fullName,
+    this.userType,
+    this.matricNo,
+    this.contactNumber,
+    this.building,
+    this.roomNumber,
   });
 
   Map<String, dynamic> toMap() {
@@ -47,18 +63,35 @@ class ComplaintModel {
       'category': category,
       'status': status,
       'priority': priority,
-      'imageUrl': imageUrl,
+      'imageUrls': imageUrls, // Save as List
       'timestamp': FieldValue.serverTimestamp(),
       'assignedTo': assignedTo,
-      // --- NEW ---
       'findings': findings,
       'actionTaken': actionTaken,
       'inspectionResult': inspectionResult,
       'adminRemarks': adminRemarks,
+      'fullName': fullName,
+      'userType': userType,
+      'matricNo': matricNo,
+      'contactNumber': contactNumber,
+      'building': building,
+      'roomNumber': roomNumber,
     };
   }
 
   factory ComplaintModel.fromMap(Map<String, dynamic> data, String documentId) {
+    // --- SAFE MIGRATION LOGIC ---
+    // This prevents crashes if the database still has old "imageUrl" fields.
+    List<String> images = [];
+    
+    if (data['imageUrls'] != null) {
+      // If it's the new format (List), use it
+      images = List<String>.from(data['imageUrls']);
+    } else if (data['imageUrl'] != null) {
+      // If it's the old format (String), wrap it in a List
+      images = [data['imageUrl']];
+    }
+
     return ComplaintModel(
       id: documentId,
       uid: data['uid'] ?? '',
@@ -68,14 +101,19 @@ class ComplaintModel {
       category: data['category'] ?? 'General',
       status: data['status'] ?? 'Pending',
       priority: data['priority'] ?? 'Low',
-      imageUrl: data['imageUrl'],
+      imageUrls: images, // Use our safe list
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       assignedTo: data['assignedTo'],
-      // --- NEW ---
       findings: data['findings'],
       actionTaken: data['actionTaken'],
       inspectionResult: data['inspectionResult'],
-      adminRemarks: data['adminRemarks'], // <--- Read from Firestore
+      adminRemarks: data['adminRemarks'],
+      fullName: data['fullName'],
+      userType: data['userType'],
+      matricNo: data['matricNo'],
+      contactNumber: data['contactNumber'],
+      building: data['building'],
+      roomNumber: data['roomNumber'],
     );
   }
 }

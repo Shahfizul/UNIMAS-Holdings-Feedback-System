@@ -28,23 +28,25 @@ class ComplaintService {
     return 'Low';
   }
 
-  // 2. SUBMIT COMPLAINT
+  // 2. SUBMIT COMPLAINT (Updated for Multiple Images)
   Future<void> submitComplaint({
     required String uid,
     required String email,
     required String title,
     required String description,
     required String category,
-    String? imageUrl,
+    List<String> imageUrls = const [], // <--- CHANGED to List
+    required String fullName,
+    required String userType,
+    required String matricNo,
+    required String contactNumber,
+    required String building,
+    required String roomNumber,
   }) async {
     
-    // Auto-calculate priority before saving
     String aiPriority = _analyzePriority(description, category);
-
-    // Create a new document ref (so we get the ID)
     DocumentReference docRef = complaintCollection.doc();
 
-    // Create the model
     ComplaintModel complaint = ComplaintModel(
       id: docRef.id,
       uid: uid,
@@ -52,13 +54,18 @@ class ComplaintService {
       title: title,
       description: description,
       category: category,
-      status: 'Pending', // Default status
-      priority: aiPriority, // AI determined this
-      imageUrl: imageUrl,
-      timestamp: DateTime.now(), // Placeholder, server will overwrite
+      status: 'Pending',
+      priority: aiPriority,
+      imageUrls: imageUrls, // <--- Pass the List
+      timestamp: DateTime.now(),
+      fullName: fullName,
+      userType: userType,
+      matricNo: matricNo,
+      contactNumber: contactNumber,
+      building: building,
+      roomNumber: roomNumber,
     );
 
-    // Save to Firestore
     await docRef.set(complaint.toMap());
   }
 
@@ -74,8 +81,8 @@ class ComplaintService {
     });
   }
 
-  // 4. ASSIGN MAINTAINER
-  Future<void> assignMaintainer(String complaintId, String maintainerId) async {
+  // 4. ASSIGN MAINTAINER 
+  Future<void> assignComplaint(String complaintId, String maintainerId) async {
     return await complaintCollection.doc(complaintId).update({
       'assignedTo': maintainerId,
       'status': 'In Progress', // Automatically move status forward
