@@ -81,4 +81,51 @@ class ComplaintService {
       'status': 'In Progress', // Automatically move status forward
     });
   }
+
+  // 5. GET JOBS ASSIGNED TO SPECIFIC MAINTAINER
+  Stream<List<ComplaintModel>> getAssignedComplaints(String maintainerUid) {
+    return complaintCollection
+        .where('assignedTo', isEqualTo: maintainerUid) // <--- The Filter
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return ComplaintModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+    });
+  }
+
+  // 6. MARK AS RESOLVED (Matches CCF Sections 2, 3, & 4)
+  Future<void> resolveComplaint({
+    required String complaintId,
+    required String findings,        // Section 2
+    required String actionTaken,     // Section 3
+    required String inspectionResult // Section 4
+  }) async {
+    return await complaintCollection.doc(complaintId).update({
+      'status': 'Pending Verification',
+      'resolvedAt': FieldValue.serverTimestamp(),
+      'findings': findings,
+      'actionTaken': actionTaken,
+      'inspectionResult': inspectionResult,
+    });
+  }
+
+  // 7. ADMIN VERIFY (Final Approval - Section 5)
+  Future<void> verifyComplaint(String complaintId) async {
+    return await complaintCollection.doc(complaintId).update({
+      'status': 'Resolved', // <--- NOW this is the final status
+      'isVerified': true, // New Field
+      'verifiedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // 8. ADMIN REJECT (Re-opens the job)
+  Future<void> rejectComplaint(String complaintId, String reason) async {
+    return await complaintCollection.doc(complaintId).update({
+      'status': 'In Progress', // Send back to Maintainer!
+      'isVerified': false,
+      'adminRemarks': reason, // Tell them why
+    });
+  }
 }

@@ -2,16 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ComplaintModel {
   final String id;
-  final String uid; // Who submitted it
+  final String uid; 
   final String email;
   final String title;
   final String description;
   final String category;
-  final String status; // 'Pending', 'In Progress', 'Resolved'
-  final String priority; // 'High', 'Medium', 'Low'
+  final String status; 
+  final String priority; 
   final String? imageUrl;
   final DateTime timestamp;
-  final String? assignedTo; // <--- NEW: The Maintainer's UID
+  final String? assignedTo;
+  
+  // --- NEW: CCF Digital Completion Fields ---
+  final String? findings;         // Section 2: Validation/Investigation
+  final String? actionTaken;      // Section 3: Action Plan/Rectification
+  final String? inspectionResult; // Section 4: Work Inspection/Status
+  final String? adminRemarks; // <--- NEW: Stores the rejection reason
 
   ComplaintModel({
     required this.id,
@@ -24,10 +30,14 @@ class ComplaintModel {
     required this.priority,
     this.imageUrl,
     required this.timestamp,
-    this.assignedTo, // <--- NEW
+    this.assignedTo,
+    // --- NEW ---
+    this.findings,
+    this.actionTaken,
+    this.inspectionResult,
+    this.adminRemarks, // <--- Add to constructor
   });
 
-  // Save to Firestore
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
@@ -39,11 +49,15 @@ class ComplaintModel {
       'priority': priority,
       'imageUrl': imageUrl,
       'timestamp': FieldValue.serverTimestamp(),
-      'assignedTo': assignedTo, // <--- NEW
+      'assignedTo': assignedTo,
+      // --- NEW ---
+      'findings': findings,
+      'actionTaken': actionTaken,
+      'inspectionResult': inspectionResult,
+      'adminRemarks': adminRemarks,
     };
   }
 
-  // Read from Firestore
   factory ComplaintModel.fromMap(Map<String, dynamic> data, String documentId) {
     return ComplaintModel(
       id: documentId,
@@ -56,7 +70,12 @@ class ComplaintModel {
       priority: data['priority'] ?? 'Low',
       imageUrl: data['imageUrl'],
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      assignedTo: data['assignedTo'], // <--- NEW
+      assignedTo: data['assignedTo'],
+      // --- NEW ---
+      findings: data['findings'],
+      actionTaken: data['actionTaken'],
+      inspectionResult: data['inspectionResult'],
+      adminRemarks: data['adminRemarks'], // <--- Read from Firestore
     );
   }
 }
