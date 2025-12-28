@@ -78,7 +78,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
-                        height: 150,
+                        // height: 150,
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: Colors.grey[200],

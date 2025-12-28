@@ -201,16 +201,52 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 
                 // CASE B: It is ALREADY verified
                 else if (widget.complaint.status == 'Resolved')
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    color: Colors.green[100],
-                    child: const Center(
-                      child: Text(
-                        "✅ Verified by Management", 
-                        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)
+                  Column(
+                    children: [
+                      // The Green Box
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.green[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "✅ Verified by Management", 
+                            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)
+                          )
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 10),
+                      
+                      // THE UNDO BUTTON
+                      TextButton.icon(
+                        icon: const Icon(Icons.undo, color: Colors.orange),
+                        label: const Text("Mistake? Undo Verification"),
+                        style: TextButton.styleFrom(foregroundColor: Colors.orange),
+                        onPressed: () async {
+                          // Confirmation Dialog
+                          bool? confirm = await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("Undo Verification?"),
+                              content: const Text("This will move the job back to the 'To Verify' tab."),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+                                TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Yes, Undo")),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true) {
+                            await ComplaintService().undoVerification(widget.complaint.id);
+                            if (context.mounted) Navigator.pop(context); // Close screen
+                          }
+                        },
                       )
-                    ),
+                    ],
                   )
               ],
             ],

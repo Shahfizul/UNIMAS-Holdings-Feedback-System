@@ -128,4 +128,13 @@ class ComplaintService {
       'adminRemarks': reason, // Tell them why
     });
   }
+
+  // 9. UNDO VERIFICATION (Fix accidental clicks)
+  Future<void> undoVerification(String complaintId) async {
+    return await complaintCollection.doc(complaintId).update({
+      'status': 'Pending Verification', // Send back to "To Verify" tab
+      'isVerified': false,
+      'verifiedAt': FieldValue.delete(), // Remove the timestamp
+    });
+  }
 }
