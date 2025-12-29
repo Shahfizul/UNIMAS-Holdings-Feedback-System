@@ -466,6 +466,59 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     ),
                   ],
                 ),
+              // --- SECTION 6: SERVICE RATING (NEW) ---
+              if (widget.complaint.rating > 0) ...[
+                const SizedBox(height: 30),
+                const Divider(thickness: 2),
+                const Center(
+                  child: Text(
+                    "⭐ Resident Rating",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    border: Border.all(color: Colors.amber),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (index) {
+                          return Icon(
+                            index < widget.complaint.rating
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: Colors.amber,
+                            size: 30,
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.complaint.review.isNotEmpty
+                            ? "\"${widget.complaint.review}\""
+                            : "No written comment.",
+                        style: const TextStyle(
+                          fontStyle: FontStyle.italic,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ],
             ],
             const SizedBox(height: 30),
           ],

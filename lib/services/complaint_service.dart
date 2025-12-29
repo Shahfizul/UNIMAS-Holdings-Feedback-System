@@ -240,4 +240,25 @@ class ComplaintService {
       'verifiedAt': FieldValue.delete(), // Remove the timestamp
     });
   }
+
+  // 10. SUBMIT SERVICE RATING
+  Future<void> submitRating(String complaintId, double rating, String review) async {
+    await complaintCollection.doc(complaintId).update({
+      'rating': rating,
+      'review': review,
+    });
+  }
+
+  // 11. GET COMPLAINTS FOR SPECIFIC RESIDENT (FR-10)
+  Stream<List<ComplaintModel>> getUserComplaints(String uid) {
+    return complaintCollection
+        .where('uid', isEqualTo: uid) // Filter by Resident ID
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return ComplaintModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+    });
+  }
 }

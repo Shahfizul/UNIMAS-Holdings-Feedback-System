@@ -9,22 +9,22 @@ class ComplaintModel {
   final String category;
   final String status; 
   final String priority; 
-  
-  // Images
   final List<String> imageUrls; 
-  
   final DateTime timestamp;
   final String? assignedTo;
   
-  // --- CHANGED: Non-nullable for easier UI handling ---
-  // We default these to "" so they are never null.
+  // Maintainer Fields
   final String findings;         
   final String actionTaken;      
   final String inspectionResult; 
-  
   final String? adminRemarks;
 
-  // CCF Section 1 Fields (Kept as Nullable)
+  // --- NEW: RATING FIELDS ---
+  final double rating; // 0.0 means not rated yet
+  final String review; // Feedback text
+  // --------------------------
+
+  // Resident Info
   final String? fullName;
   final String? userType; 
   final String? matricNo;
@@ -44,13 +44,15 @@ class ComplaintModel {
     required this.imageUrls,
     required this.timestamp,
     this.assignedTo,
-    
-    // Initialize with default empty strings
     this.findings = '', 
     this.actionTaken = '',
     this.inspectionResult = '',
-    
     this.adminRemarks,
+    
+    // Initialize new fields
+    this.rating = 0.0, 
+    this.review = '',
+
     this.fullName,
     this.userType,
     this.matricNo,
@@ -75,6 +77,11 @@ class ComplaintModel {
       'actionTaken': actionTaken,
       'inspectionResult': inspectionResult,
       'adminRemarks': adminRemarks,
+      
+      // Save new fields
+      'rating': rating,
+      'review': review,
+
       'fullName': fullName,
       'userType': userType,
       'matricNo': matricNo,
@@ -85,9 +92,7 @@ class ComplaintModel {
   }
 
   factory ComplaintModel.fromMap(Map<String, dynamic> data, String documentId) {
-    // --- SAFE MIGRATION LOGIC (PRESERVED) ---
     List<String> images = [];
-    
     if (data['imageUrls'] != null) {
       images = List<String>.from(data['imageUrls']);
     } else if (data['imageUrl'] != null) {
@@ -106,13 +111,15 @@ class ComplaintModel {
       imageUrls: images, 
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       assignedTo: data['assignedTo'],
-      
-      // --- UPDATED: Handle nulls by defaulting to empty string ---
       findings: data['findings'] ?? '',
       actionTaken: data['actionTaken'] ?? '',
       inspectionResult: data['inspectionResult'] ?? '',
-      
       adminRemarks: data['adminRemarks'],
+      
+      // Load new fields (Safe conversion to double)
+      rating: (data['rating'] ?? 0.0).toDouble(),
+      review: data['review'] ?? '',
+
       fullName: data['fullName'],
       userType: data['userType'],
       matricNo: data['matricNo'],
