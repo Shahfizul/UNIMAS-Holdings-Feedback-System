@@ -7,14 +7,36 @@ import '../../models/user_model.dart';
 import '../../models/complaint_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/complaint_service.dart';
+import '../../services/notification_service.dart'; // Import Notification Service
 
 // Screens
 import '../complaint/report_screen.dart';
 import '../complaint/resident_complaint_detail.dart';
 import '../../widgets/notification_badge.dart';
 
-class UserHomeScreen extends StatelessWidget {
+// 1. CONVERT TO STATEFUL WIDGET
+class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
+
+  @override
+  State<UserHomeScreen> createState() => _UserHomeScreenState();
+}
+
+class _UserHomeScreenState extends State<UserHomeScreen> {
+  
+  // 2. INIT STATE (Triggers once when screen loads)
+  @override
+  void initState() {
+    super.initState();
+    // Use addPostFrameCallback to ensure context is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = Provider.of<UserModel?>(context, listen: false);
+      if (user != null) {
+        // Initialize Notifications (Ask Permission + Save Token)
+        NotificationService().initNotifications(user.uid);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,30 +49,20 @@ class UserHomeScreen extends StatelessWidget {
     return StreamBuilder<List<ComplaintModel>>(
       stream: ComplaintService().getUserComplaints(user.uid),
       builder: (context, snapshot) {
-        // 1. HANDLE ERRORS (e.g., Missing Index)
+        // Handle Errors
         if (snapshot.hasError) {
-          // Print error to console so you can click the link
           print("FIRESTORE ERROR: ${snapshot.error}");
           return Scaffold(
             body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Text(
-                  "Error: ${snapshot.error}.\n\nCheck your debug console for a link to create the required database index.",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
+              child: Text("Error: ${snapshot.error}"),
             ),
           );
         }
 
-        // 2. Handle Loading
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
-        // 3. Get Data
         List<ComplaintModel> allComplaints = snapshot.data ?? [];
 
         return DefaultTabController(
@@ -104,7 +116,7 @@ class UserHomeScreen extends StatelessWidget {
   }
 }
 
-// --- LIST WIDGET (Unchanged) ---
+// --- LIST WIDGET (Kept the same as before) ---
 class ResidentComplaintList extends StatelessWidget {
   final List<ComplaintModel> allComplaints;
   final bool isHistory;
@@ -117,7 +129,6 @@ class ResidentComplaintList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FILTER LOGIC
     List<ComplaintModel> filteredList = allComplaints.where((job) {
       if (isHistory) {
         return job.status == 'Resolved' || job.status == 'Pending Verification';
@@ -126,7 +137,6 @@ class ResidentComplaintList extends StatelessWidget {
       }
     }).toList();
 
-    // EMPTY STATE
     if (filteredList.isEmpty) {
       return Center(
         child: Column(
@@ -143,7 +153,6 @@ class ResidentComplaintList extends StatelessWidget {
       );
     }
 
-    // LIST VIEW
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: filteredList.length,

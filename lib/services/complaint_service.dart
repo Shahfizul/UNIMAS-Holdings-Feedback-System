@@ -6,37 +6,14 @@ class ComplaintService {
   final CollectionReference complaintCollection =
       FirebaseFirestore.instance.collection('complaints');
 
-  // 1. SIMULATED AI PRIORITY LOGIC
-  // We scan the text for "urgent" words to set priority automatically.
-  String _analyzePriority(String description, String category) {
-    String descLower = description.toLowerCase();
-    
-    // High Priority Keywords
-    if (descLower.contains('fire') || 
-        descLower.contains('leak') || 
-        descLower.contains('danger') ||
-        descLower.contains('broken') ||
-        descLower.contains('emergency')) {
-      return 'High';
-    }
-    
-    // Medium Priority
-    if (category == 'Electrical' || category == 'Security') {
-      return 'Medium';
-    }
-
-    // Default
-    return 'Low';
-  }
-
-  // 2. SUBMIT COMPLAINT (Updated for Multiple Images)
+  // 2. SUBMIT COMPLAINT
   Future<void> submitComplaint({
     required String uid,
     required String email,
     required String title,
     required String description,
     required String category,
-    List<String> imageUrls = const [], // <--- CHANGED to List
+    List<String> imageUrls = const [],
     required String fullName,
     required String userType,
     required String matricNo,
@@ -45,19 +22,27 @@ class ComplaintService {
     required String roomNumber,
   }) async {
     
-    String aiPriority = _analyzePriority(description, category);
+    // 1. SET DEFAULT PRIORITY
+    // We send "Analyzing..." initially. The Cloud Function will update it 
+    // to "High", "Medium", or "Low" after a few seconds.
+    String priority = "Analyzing..."; 
+
+    // 2. GENERATE DOCUMENT REFERENCE (To get the ID first)
     DocumentReference docRef = complaintCollection.doc();
 
+    // 3. CREATE MODEL
     ComplaintModel complaint = ComplaintModel(
-      id: docRef.id,
+      id: docRef.id, // <--- IMPORTANT: Use the generated ID
       uid: uid,
       email: email,
       title: title,
       description: description,
       category: category,
       status: 'Pending',
-      priority: aiPriority,
-      imageUrls: imageUrls, // <--- Pass the List
+      
+      priority: priority, // Send "Analyzing..."
+      
+      imageUrls: imageUrls,
       timestamp: DateTime.now(),
       fullName: fullName,
       userType: userType,
@@ -67,9 +52,10 @@ class ComplaintService {
       roomNumber: roomNumber,
     );
 
+    // 4. SAVE TO FIRESTORE
     await docRef.set(complaint.toMap());
 
-    // --- NOTIFY ADMINS ---
+    // 5. NOTIFY ADMINS
     await NotificationService().notifyAdmins(
       title: "New Complaint Received",
       body: "$fullName ($userType) reported: $title",

@@ -1,16 +1,48 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // <--- NEW IMPORT
 import '../models/notification_model.dart';
 
 class NotificationService {
   final CollectionReference notifCollection = FirebaseFirestore.instance.collection('notifications');
+  final CollectionReference userCollection = FirebaseFirestore.instance.collection('users'); // <--- NEW REFERENCE
 
-  // 1. SEND NOTIFICATION
+  // --- NEW: 1. INITIALIZE FCM (Ask Permission & Save Token) ---
+  Future<void> initNotifications(String uid) async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // A. Request Permission (Required for iOS, good practice for Android)
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      print('User granted permission');
+      
+      // B. Get the Device Token
+      String? token = await messaging.getToken();
+      
+      // C. Save Token to User Profile
+      if (token != null) {
+        await userCollection.doc(uid).update({
+          'fcmToken': token, 
+        });
+        print("FCM Token Updated: $token");
+      }
+    } else {
+      print('User declined or has not accepted permission');
+    }
+  }
+
+  // --- EXISTING: 2. SEND NOTIFICATION (Internal Database Notification) ---
+  // We keep this named "sendNotification" so your other files don't break.
   Future<void> sendNotification({
     required String userId,
     required String title,
     required String body,
     String type = 'info',
-    String? complaintId, // <--- NEW PARAMETER (Optional)
+    String? complaintId,
   }) async {
     await notifCollection.add({
       'userId': userId,
@@ -19,11 +51,11 @@ class NotificationService {
       'type': type,
       'isRead': false,
       'timestamp': FieldValue.serverTimestamp(),
-      'complaintId': complaintId, // <--- Save to Firestore
+      'complaintId': complaintId,
     });
   }
 
-  // 2. GET USER NOTIFICATIONS (Stream)
+  // --- EXISTING: 3. GET USER NOTIFICATIONS (Stream) ---
   Stream<List<NotificationModel>> getUserNotifications(String userId) {
     return notifCollection
         .where('userId', isEqualTo: userId)
@@ -36,12 +68,12 @@ class NotificationService {
     });
   }
 
-  // 3. MARK AS READ
+  // --- EXISTING: 4. MARK AS READ ---
   Future<void> markAsRead(String notificationId) async {
     await notifCollection.doc(notificationId).update({'isRead': true});
   }
 
-  // Add this to NotificationService class
+  // --- EXISTING: 5. NOTIFY ADMINS ---
   Future<void> notifyAdmins({
     required String title, 
     required String body, 
@@ -49,14 +81,12 @@ class NotificationService {
     String? complaintId,
   }) async {
     try {
-      // 1. Find all users with role 'admin'
-      // FIX: Use 'FirebaseFirestore.instance' instead of '_firestore'
-      final adminSnapshot = await FirebaseFirestore.instance
-          .collection('users')
+      // Find all users with role 'admin'
+      final adminSnapshot = await userCollection
           .where('role', isEqualTo: 'admin') 
           .get();
 
-      // 2. Loop through and send notification to each
+      // Loop through and send notification to each
       for (var doc in adminSnapshot.docs) {
         await sendNotification(
           userId: doc.id,

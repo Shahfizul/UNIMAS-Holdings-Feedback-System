@@ -4,18 +4,38 @@ import '../../models/user_model.dart';
 import '../../models/complaint_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/complaint_service.dart';
+import '../../services/notification_service.dart'; // <--- ADD IMPORT
 import '../complaint/maintainer_job_detail.dart'; 
-import '../../widgets/notification_badge.dart'; // <--- ADD IMPORT
+import '../../widgets/notification_badge.dart';
 
-class MaintainerHomeScreen extends StatelessWidget {
+// 1. CONVERT TO STATEFUL WIDGET
+class MaintainerHomeScreen extends StatefulWidget {
   const MaintainerHomeScreen({super.key});
 
   @override
+  State<MaintainerHomeScreen> createState() => _MaintainerHomeScreenState();
+}
+
+class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
+
+  // 2. INIT NOTIFICATIONS ON LOAD
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = Provider.of<UserModel?>(context, listen: false);
+      if (user != null) {
+        // Ask for permission & save token
+        NotificationService().initNotifications(user.uid);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 1. Get the Current Maintainer's ID
     final user = Provider.of<UserModel?>(context);
 
-    // 2. Listen to ONLY their assigned jobs
+    // Listen to ONLY their assigned jobs
     return StreamProvider<List<ComplaintModel>>.value(
       value: ComplaintService().getAssignedComplaints(user!.uid),
       initialData: const [],
@@ -32,10 +52,7 @@ class MaintainerHomeScreen extends StatelessWidget {
               ],
             ),
             actions: [
-              // --- CHANGED: Notification Badge ---
               NotificationBadge(userId: user.uid),
-              // -----------------------------------
-
               IconButton(
                 icon: const Icon(Icons.logout),
                 onPressed: () => AuthService().signOut(),
@@ -53,6 +70,8 @@ class MaintainerHomeScreen extends StatelessWidget {
     );
   }
 }
+
+// --- KEEP EXISTING JOB LIST (No Changes Needed Here) ---
 class JobList extends StatelessWidget {
   final String statusFilter;
   const JobList({super.key, required this.statusFilter});
@@ -61,7 +80,7 @@ class JobList extends StatelessWidget {
   Widget build(BuildContext context) {
     final allJobs = Provider.of<List<ComplaintModel>>(context);
     
-    // FILTER LOGIC UPDATED
+    // FILTER LOGIC
     List<ComplaintModel> filteredJobs;
     
     if (statusFilter == 'In Progress') {
@@ -99,7 +118,6 @@ class JobList extends StatelessWidget {
             subtitle: Text("${job.category} • ${job.priority} Priority"),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              // Navigate to Detail to complete the job
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => MaintainerJobDetail(job: job)),
