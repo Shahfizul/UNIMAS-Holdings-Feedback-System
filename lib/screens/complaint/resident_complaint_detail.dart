@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Needed for Live Stream
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../models/complaint_model.dart';
 import '../../services/complaint_service.dart';
+import '../../widgets/simple_video_player.dart'; // <--- 1. IMPORT THIS
 
 class ResidentComplaintDetail extends StatefulWidget {
   final ComplaintModel job;
@@ -16,23 +17,18 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
   
   @override
   Widget build(BuildContext context) {
-    // 1. LIVE STREAM LISTENER
-    // We listen to the document so the UI updates INSTANTLY when you rate.
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('complaints')
           .doc(widget.job.id)
           .snapshots(),
       builder: (context, snapshot) {
-        // Handle Loading/Errors
         if (snapshot.hasError) return const Scaffold(body: Center(child: Text("Error loading details")));
         if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
-        // 2. CONVERT LIVE DATA TO MODEL
         var data = snapshot.data!.data() as Map<String, dynamic>;
         ComplaintModel currentJob = ComplaintModel.fromMap(data, widget.job.id);
 
-        // Helper for Status Colors
         Color statusColor = Colors.grey;
         if (currentJob.status == 'In Progress') statusColor = Colors.orange;
         if (currentJob.status == 'Resolved') statusColor = Colors.green;
@@ -59,25 +55,18 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
                   ),
                   child: Column(
                     children: [
-                      Text(
-                        "Current Status",
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
+                      Text("Current Status", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                       const SizedBox(height: 5),
                       Text(
                         currentJob.status.toUpperCase(),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: statusColor, fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // --- SECTION 2: LOCATION & CONTACT (NEW) ---
+                // --- SECTION 2: LOCATION & CONTACT ---
                 const Text("📍 Premise Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
                 const SizedBox(height: 10),
                 Container(
@@ -102,10 +91,7 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
                 // --- SECTION 3: ISSUE DETAILS ---
                 const Text("📄 Issue Description", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
                 const SizedBox(height: 10),
-                Text(
-                  currentJob.title,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
+                Text(currentJob.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
                 Row(
                   children: [
@@ -122,7 +108,7 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
                 Text(currentJob.description, style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 20),
 
-                // --- SECTION 4: PHOTOS (NEW) ---
+                // --- SECTION 4: PHOTOS ---
                 if (currentJob.imageUrls.isNotEmpty) ...[
                   const Text("📸 Evidence Photos", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
                   const SizedBox(height: 10),
@@ -150,6 +136,17 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
                   const SizedBox(height: 20),
                 ],
 
+                // --- SECTION 4.5: VIDEO (NEW) ---
+                if (currentJob.videoUrl != null && currentJob.videoUrl!.isNotEmpty) ...[
+                  const Text("🎥 Video Evidence", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 250, // Height for video player
+                    child: SimpleVideoPlayer(videoUrl: currentJob.videoUrl!), // <--- USE THE WIDGET
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
                 // --- SECTION 5: MAINTAINER REPORT ---
                 if (currentJob.findings.isNotEmpty || currentJob.actionTaken.isNotEmpty) ...[
                   const Divider(thickness: 2),
@@ -169,7 +166,7 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
 
                 const Divider(height: 40),
 
-                // --- SECTION 6: RATING (Uses currentJob) ---
+                // --- SECTION 6: RATING ---
                 if (currentJob.status == 'Resolved') 
                   _buildRatingSection(currentJob),
               ],
@@ -180,7 +177,6 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
     );
   }
 
-  // Helper Row
   Widget _buildRow(String label, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
@@ -195,7 +191,6 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
   }
 
   Widget _buildRatingSection(ComplaintModel job) {
-    // A. If already rated, show the review
     if (job.rating > 0) {
       return Container(
         width: double.infinity,
@@ -230,26 +225,16 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
       );
     }
 
-    // B. If NOT rated, show the button
     return Center(
       child: Column(
         children: [
-          const Text(
-            "How was the service?",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          const Text("How was the service?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           ElevatedButton.icon(
             icon: const Icon(Icons.star),
             label: const Text("Rate Service"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber,
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () {
-              // Pass the ID to the dialog
-              _showRatingDialog(job.id);
-            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black),
+            onPressed: () => _showRatingDialog(job.id),
           ),
         ],
       ),
@@ -291,34 +276,21 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
                   ),
                   const SizedBox(height: 10),
                   TextField(
-                    decoration: const InputDecoration(
-                      hintText: "Optional comment...",
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: const InputDecoration(hintText: "Optional comment...", border: OutlineInputBorder()),
                     maxLines: 2,
                     onChanged: (val) => tempReview = val,
                   ),
                 ],
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel"),
-                ),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
                 ElevatedButton(
                   child: const Text("Submit"),
                   onPressed: () async {
-                    // Use the Service to update Firestore
                     await ComplaintService().submitRating(complaintId, tempRating, tempReview);
-                    
                     if (mounted) {
-                      Navigator.pop(context); // Close dialog
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Thank you for your feedback!")),
-                      );
-                      // NOTE: We do NOT pop the screen. 
-                      // The StreamBuilder will automatically detect the change 
-                      // and switch the button to the Stars view instantly!
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Thank you for your feedback!")));
                     }
                   },
                 ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/complaint_model.dart';
 import '../../services/complaint_service.dart';
+import '../../widgets/simple_video_player.dart'; // <--- 1. IMPORT THIS
 
 class MaintainerJobDetail extends StatelessWidget {
   final ComplaintModel job;
@@ -47,7 +48,7 @@ class MaintainerJobDetail extends StatelessWidget {
                 ),
               ),
 
-            // --- 1. CONTACT & LOCATION INFO (NEW) ---
+            // --- 1. CONTACT & LOCATION INFO ---
             const Text(
               "📍 Location & Contact",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -82,12 +83,12 @@ class MaintainerJobDetail extends StatelessWidget {
             const SizedBox(height: 20),
 
             // --- 2. PHOTOS (Horizontal List) ---
-            const Text(
-              "📸 Evidence Photos",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 10),
-            if (job.imageUrls.isNotEmpty)
+            if (job.imageUrls.isNotEmpty) ...[
+              const Text(
+                "📸 Evidence Photos",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 10),
               SizedBox(
                 height: 250,
                 child: ListView.builder(
@@ -105,7 +106,7 @@ class MaintainerJobDetail extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         child: Image.network(
                           job.imageUrls[index],
-                          fit: BoxFit.contain, // FIX: Full image visible
+                          fit: BoxFit.contain, 
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
                             return const Center(
@@ -125,14 +126,23 @@ class MaintainerJobDetail extends StatelessWidget {
                     );
                   },
                 ),
-              )
-            else
-              const Text(
-                "No photos attached",
-                style: TextStyle(color: Colors.grey),
               ),
+              const SizedBox(height: 20),
+            ],
 
-            const SizedBox(height: 20),
+            // --- 2.5 VIDEO EVIDENCE (NEW) ---
+            if (job.videoUrl != null && job.videoUrl!.isNotEmpty) ...[
+               const Text(
+                "🎥 Video Evidence",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 250,
+                child: SimpleVideoPlayer(videoUrl: job.videoUrl!), // <--- USE WIDGET
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // 3. Info
             Text(
@@ -315,7 +325,7 @@ class MaintainerJobDetail extends StatelessWidget {
                   ],
                 ),
               ),
-            // --- 5. CUSTOMER FEEDBACK (NEW) ---
+            // --- 5. CUSTOMER FEEDBACK ---
             if (job.rating > 0) ...[
               const SizedBox(height: 30),
               const Divider(thickness: 2),

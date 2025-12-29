@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/complaint_model.dart';
-import '../../models/user_model.dart'; // Needed for Maintainer selection
+import '../../models/user_model.dart'; 
 import '../../services/complaint_service.dart';
 import '../../services/database_service.dart';
+import '../../widgets/simple_video_player.dart'; // <--- 1. IMPORT THIS
 
 class ComplaintDetailScreen extends StatefulWidget {
   final ComplaintModel complaint;
@@ -27,11 +28,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             // --- SECTION 1: COMPLAINANT INFO ---
             const Text(
               "1. Complainant Information",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
             ),
             const SizedBox(height: 10),
             Container(
@@ -43,26 +40,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               ),
               child: Column(
                 children: [
-                  _buildDetailRow(
-                    Icons.person,
-                    "Name",
-                    widget.complaint.fullName,
-                  ),
-                  _buildDetailRow(
-                    Icons.badge,
-                    "ID / Matric",
-                    widget.complaint.matricNo,
-                  ),
-                  _buildDetailRow(
-                    Icons.phone,
-                    "Contact",
-                    widget.complaint.contactNumber,
-                  ),
-                  _buildDetailRow(
-                    Icons.assignment_ind,
-                    "User Type",
-                    widget.complaint.userType,
-                  ),
+                  _buildDetailRow(Icons.person, "Name", widget.complaint.fullName),
+                  _buildDetailRow(Icons.badge, "ID / Matric", widget.complaint.matricNo),
+                  _buildDetailRow(Icons.phone, "Contact", widget.complaint.contactNumber),
+                  _buildDetailRow(Icons.assignment_ind, "User Type", widget.complaint.userType),
                 ],
               ),
             ),
@@ -71,11 +52,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             // --- SECTION 2: PREMISE DETAILS ---
             const Text(
               "2. Premise / Location",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
             ),
             const SizedBox(height: 10),
             Container(
@@ -87,16 +64,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               ),
               child: Column(
                 children: [
-                  _buildDetailRow(
-                    Icons.apartment,
-                    "Building",
-                    widget.complaint.building,
-                  ),
-                  _buildDetailRow(
-                    Icons.room,
-                    "Room / Block",
-                    widget.complaint.roomNumber,
-                  ),
+                  _buildDetailRow(Icons.apartment, "Building", widget.complaint.building),
+                  _buildDetailRow(Icons.room, "Room / Block", widget.complaint.roomNumber),
                 ],
               ),
             ),
@@ -105,11 +74,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             // --- SECTION 3: DAMAGE DETAILS ---
             const Text(
               "3. Damage Details",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
             ),
             const SizedBox(height: 10),
             Text(
@@ -124,9 +89,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     widget.complaint.priority,
                     style: const TextStyle(color: Colors.white),
                   ),
-                  backgroundColor: widget.complaint.priority == 'High'
-                      ? Colors.red
-                      : Colors.orange,
+                  backgroundColor: widget.complaint.priority == 'High' ? Colors.red : Colors.orange,
                 ),
                 const SizedBox(width: 10),
                 Chip(label: Text(widget.complaint.category)),
@@ -135,10 +98,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            const Text(
-              "Description:",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            const Text("Description:", style: TextStyle(fontWeight: FontWeight.bold)),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
@@ -157,15 +117,11 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             if (widget.complaint.imageUrls.isNotEmpty) ...[
               const Text(
                 "4. Evidence Photos",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
               ),
               const SizedBox(height: 10),
               SizedBox(
-                height: 300, // Taller to fit full image
+                height: 300, 
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: widget.complaint.imageUrls.length,
@@ -181,13 +137,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child: Image.network(
                           widget.complaint.imageUrls[index],
-                          fit: BoxFit
-                              .contain, // FIX: Shows full image without cropping
+                          fit: BoxFit.contain, 
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
+                            return const Center(child: CircularProgressIndicator());
                           },
                         ),
                       ),
@@ -195,16 +148,23 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                   },
                 ),
               ),
-            ] else
-              const Text(
-                "No images attached",
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
+              const SizedBox(height: 20),
+            ],
 
-            const SizedBox(height: 30),
+            // --- SECTION 4.5: VIDEO EVIDENCE (NEW) ---
+            if (widget.complaint.videoUrl != null && widget.complaint.videoUrl!.isNotEmpty) ...[
+              const Text(
+                "🎥 Video Evidence",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 250,
+                child: SimpleVideoPlayer(videoUrl: widget.complaint.videoUrl!), // <--- USE WIDGET
+              ),
+              const SizedBox(height: 30),
+            ],
+
             const Divider(thickness: 2),
 
             // --- SECTION 5: ADMIN ACTIONS ---
@@ -218,8 +178,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               StreamBuilder<List<UserModel>>(
                 stream: DatabaseService().maintainers,
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData)
-                    return const CircularProgressIndicator();
+                  if (!snapshot.hasData) return const CircularProgressIndicator();
                   var maintainers = snapshot.data!;
 
                   return DropdownButtonFormField<String>(
@@ -228,14 +187,11 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     items: maintainers.map((m) {
                       return DropdownMenuItem(
                         value: m.uid,
-                        child: Text("${m.fullName} (${m.email})"), // Show Name
+                        child: Text("${m.fullName} (${m.email})"), 
                       );
                     }).toList(),
-                    onChanged: (val) =>
-                        setState(() => selectedMaintainerId = val),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
+                    onChanged: (val) => setState(() => selectedMaintainerId = val),
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
                   );
                 },
               ),
@@ -244,10 +200,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.assignment_ind, color: Colors.white),
-                  label: const Text(
-                    "Assign & Start Job",
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  label: const Text("Assign & Start Job", style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[800],
                     padding: const EdgeInsets.all(15),
@@ -260,11 +213,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       );
                       if (mounted) {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Job Assigned Successfully!"),
-                          ),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Job Assigned Successfully!")));
                       }
                     }
                   },
@@ -281,17 +230,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Job is currently In Progress",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
-                        // We could show WHO it is assigned to here if we fetched the name
-                        Text(
-                          "Assigned to ID: ${widget.complaint.assignedTo ?? 'Unknown'}",
-                        ),
+                        const Text("Job is currently In Progress", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                        Text("Assigned to ID: ${widget.complaint.assignedTo ?? 'Unknown'}"),
                       ],
                     ),
                   ],
@@ -300,39 +240,18 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             ],
 
             // 4. Show CCF Report & Admin Verification
-            if (widget.complaint.status == 'Pending Verification' ||
-                widget.complaint.status == 'Resolved') ...[
+            if (widget.complaint.status == 'Pending Verification' || widget.complaint.status == 'Resolved') ...[
               const SizedBox(height: 30),
               const Divider(thickness: 2),
               const Text(
                 "✅ Digital Completion Report",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
               ),
               const SizedBox(height: 10),
 
-              // Check if empty. If yes, show "N/A". If no, show the text.
-              _buildReportRow(
-                "Sec 2 (Findings):",
-                widget.complaint.findings.isEmpty
-                    ? "N/A"
-                    : widget.complaint.findings,
-              ),
-              _buildReportRow(
-                "Sec 3 (Action):",
-                widget.complaint.actionTaken.isEmpty
-                    ? "N/A"
-                    : widget.complaint.actionTaken,
-              ),
-              _buildReportRow(
-                "Sec 4 (Result):",
-                widget.complaint.inspectionResult.isEmpty
-                    ? "N/A"
-                    : widget.complaint.inspectionResult,
-              ),
+              _buildReportRow("Sec 2 (Findings):", widget.complaint.findings.isEmpty ? "N/A" : widget.complaint.findings),
+              _buildReportRow("Sec 3 (Action):", widget.complaint.actionTaken.isEmpty ? "N/A" : widget.complaint.actionTaken),
+              _buildReportRow("Sec 4 (Result):", widget.complaint.inspectionResult.isEmpty ? "N/A" : widget.complaint.inspectionResult),
 
               const SizedBox(height: 20),
 
@@ -341,10 +260,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Section 5: Verification",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    const Text("Section 5: Verification", style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -352,9 +268,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                           child: OutlinedButton.icon(
                             icon: const Icon(Icons.close, color: Colors.red),
                             label: const Text("Reject"),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                            ),
+                            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                             onPressed: () async {
                               String reason = "";
                               await showDialog(
@@ -363,20 +277,16 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                                   title: const Text("Reject Report"),
                                   content: TextField(
                                     onChanged: (val) => reason = val,
-                                    decoration: const InputDecoration(
-                                      hintText: "Reason for rejection",
-                                    ),
+                                    decoration: const InputDecoration(hintText: "Reason for rejection"),
                                   ),
                                   actions: [
                                     ElevatedButton(
                                       onPressed: () async {
-                                        await ComplaintService()
-                                            .rejectComplaint(
-                                              widget.complaint.id,
-                                              reason,
-                                            );
-                                        Navigator.pop(context);
-                                        Navigator.pop(context);
+                                        await ComplaintService().rejectComplaint(widget.complaint.id, reason);
+                                        if(context.mounted) {
+                                          Navigator.pop(context); // Close dialog
+                                          Navigator.pop(context); // Close screen
+                                        }
                                       },
                                       child: const Text("Send Back"),
                                     ),
@@ -391,17 +301,13 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                           child: ElevatedButton.icon(
                             icon: const Icon(Icons.check, color: Colors.white),
                             label: const Text("Verify"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                            ),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                             onPressed: () async {
-                              await ComplaintService().verifyComplaint(
-                                widget.complaint.id,
-                              );
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Job Verified!")),
-                              );
+                              await ComplaintService().verifyComplaint(widget.complaint.id);
+                              if(mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Job Verified!")));
+                              }
                             },
                           ),
                         ),
@@ -415,71 +321,41 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.green[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      decoration: BoxDecoration(color: Colors.green[100], borderRadius: BorderRadius.circular(8)),
                       child: const Center(
-                        child: Text(
-                          "✅ Verified by Management",
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: Text("✅ Verified by Management", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextButton.icon(
                       icon: const Icon(Icons.undo, color: Colors.orange),
                       label: const Text("Mistake? Undo Verification"),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.orange,
-                      ),
+                      style: TextButton.styleFrom(foregroundColor: Colors.orange),
                       onPressed: () async {
                         bool? confirm = await showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
                             title: const Text("Undo Verification?"),
-                            content: const Text(
-                              "This will move the job back to the 'To Verify' tab.",
-                            ),
+                            content: const Text("This will move the job back to the 'To Verify' tab."),
                             actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text("Cancel"),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text("Yes, Undo"),
-                              ),
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+                              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Yes, Undo")),
                             ],
                           ),
                         );
                         if (confirm == true) {
-                          await ComplaintService().undoVerification(
-                            widget.complaint.id,
-                          );
+                          await ComplaintService().undoVerification(widget.complaint.id);
                           if (context.mounted) Navigator.pop(context);
                         }
                       },
                     ),
                   ],
                 ),
-              // --- SECTION 6: SERVICE RATING (NEW) ---
+              // --- SECTION 6: SERVICE RATING ---
               if (widget.complaint.rating > 0) ...[
                 const SizedBox(height: 30),
                 const Divider(thickness: 2),
-                const Center(
-                  child: Text(
-                    "⭐ Resident Rating",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.amber,
-                    ),
-                  ),
-                ),
+                const Center(child: Text("⭐ Resident Rating", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber))),
                 const SizedBox(height: 10),
                 Container(
                   width: double.infinity,
@@ -495,9 +371,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(5, (index) {
                           return Icon(
-                            index < widget.complaint.rating
-                                ? Icons.star
-                                : Icons.star_border,
+                            index < widget.complaint.rating ? Icons.star : Icons.star_border,
                             color: Colors.amber,
                             size: 30,
                           );
@@ -505,13 +379,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        widget.complaint.review.isNotEmpty
-                            ? "\"${widget.complaint.review}\""
-                            : "No written comment.",
-                        style: const TextStyle(
-                          fontStyle: FontStyle.italic,
-                          fontSize: 16,
-                        ),
+                        widget.complaint.review.isNotEmpty ? "\"${widget.complaint.review}\"" : "No written comment.",
+                        style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 16),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -537,20 +406,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           const SizedBox(width: 10),
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
-              ),
-            ),
+            child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700])),
           ),
-          Expanded(
-            child: Text(
-              value ?? "N/A",
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
+          Expanded(child: Text(value ?? "N/A", style: const TextStyle(fontWeight: FontWeight.w500))),
         ],
       ),
     );
@@ -562,13 +420,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
+          SizedBox(width: 120, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold))),
           Expanded(child: Text(value)),
         ],
       ),

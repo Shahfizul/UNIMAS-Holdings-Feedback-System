@@ -10,8 +10,9 @@ class ComplaintModel {
   final String status; 
   final String priority; 
   final List<String> imageUrls; 
+  final String? videoUrl; // <--- NEW FIELD ADDED
   final DateTime timestamp;
-  final String? assignedTo;
+  final String? assignedTo; // Kept your original field name
   
   // Maintainer Fields
   final String findings;         
@@ -19,10 +20,9 @@ class ComplaintModel {
   final String inspectionResult; 
   final String? adminRemarks;
 
-  // --- NEW: RATING FIELDS ---
-  final double rating; // 0.0 means not rated yet
-  final String review; // Feedback text
-  // --------------------------
+  // Rating Fields
+  final double rating;
+  final String review;
 
   // Resident Info
   final String? fullName;
@@ -42,6 +42,7 @@ class ComplaintModel {
     required this.status,
     required this.priority,
     required this.imageUrls,
+    this.videoUrl, // <--- Added to Constructor
     required this.timestamp,
     this.assignedTo,
     this.findings = '', 
@@ -49,7 +50,6 @@ class ComplaintModel {
     this.inspectionResult = '',
     this.adminRemarks,
     
-    // Initialize new fields
     this.rating = 0.0, 
     this.review = '',
 
@@ -71,6 +71,7 @@ class ComplaintModel {
       'status': status,
       'priority': priority,
       'imageUrls': imageUrls,
+      'videoUrl': videoUrl, // <--- Added to Map
       'timestamp': FieldValue.serverTimestamp(),
       'assignedTo': assignedTo,
       'findings': findings,
@@ -78,7 +79,6 @@ class ComplaintModel {
       'inspectionResult': inspectionResult,
       'adminRemarks': adminRemarks,
       
-      // Save new fields
       'rating': rating,
       'review': review,
 
@@ -109,6 +109,7 @@ class ComplaintModel {
       status: data['status'] ?? 'Pending',
       priority: data['priority'] ?? 'Low',
       imageUrls: images, 
+      videoUrl: data['videoUrl'], // <--- Added to Factory
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       assignedTo: data['assignedTo'],
       findings: data['findings'] ?? '',
@@ -116,7 +117,6 @@ class ComplaintModel {
       inspectionResult: data['inspectionResult'] ?? '',
       adminRemarks: data['adminRemarks'],
       
-      // Load new fields (Safe conversion to double)
       rating: (data['rating'] ?? 0.0).toDouble(),
       review: data['review'] ?? '',
 

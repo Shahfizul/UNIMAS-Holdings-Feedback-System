@@ -45,10 +45,13 @@ class _ReportScreenState extends State<ReportScreen> {
   final List<String> buildings = ['Kolej Dahlia', 'Kolej Allamanda Premium', 'Kolej Sebayor'];
 
   // --- MULTIPLE IMAGE LOGIC ---
-  final List<File> _selectedImages = []; // List instead of single file
+  final List<File> _selectedImages = []; 
   final ImagePicker _picker = ImagePicker();
-  bool _isUploading = false; 
+  
+  // --- NEW: VIDEO LOGIC ---
+  File? _selectedVideo; // <--- NEW VARIABLE
 
+  bool _isUploading = false; 
   bool _isLoadingProfile = true;
 
   @override
@@ -85,21 +88,36 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // --- PICK MULTIPLE IMAGES ---
   Future<void> _pickImages() async {
-    final List<XFile> pickedFiles = await _picker.pickMultiImage(); // Allows selecting multiple
+    final List<XFile> pickedFiles = await _picker.pickMultiImage(); 
     if (pickedFiles.isNotEmpty) {
       setState(() {
-        // Convert XFile to File and add to our list
         _selectedImages.addAll(pickedFiles.map((x) => File(x.path)));
       });
     }
   }
 
-  // --- UPLOAD LOOP ---
+  // --- NEW: PICK VIDEO ---
+  Future<void> _pickVideo() async {
+    final XFile? pickedFile = await _picker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 30), // Limit to 30 seconds
+    );
+    if (pickedFile != null) {
+      setState(() {
+        _selectedVideo = File(pickedFile.path);
+      });
+    }
+  }
+
+  // --- UPLOAD IMAGES LOOP ---
   Future<List<String>> _uploadImages() async {
     List<String> downloadUrls = [];
     
     for (var imageFile in _selectedImages) {
       try {
+        // Use ComplaintService logic if available, or direct upload here.
+        // Since you had direct upload before, I will keep it but clean it up to use Service if you prefer.
+        // To be safe, let's stick to your existing working loop but add the Video part separately.
         String fileName = "${DateTime.now().millisecondsSinceEpoch}_${path.basename(imageFile.path)}";
         Reference storageRef = FirebaseStorage.instance.ref().child('complaints/$fileName');
         UploadTask uploadTask = storageRef.putFile(imageFile);
@@ -108,7 +126,6 @@ class _ReportScreenState extends State<ReportScreen> {
         downloadUrls.add(url);
       } catch (e) {
         print("Error uploading file: $e");
-        // Continue uploading others even if one fails
       }
     }
     return downloadUrls;
@@ -124,7 +141,7 @@ class _ReportScreenState extends State<ReportScreen> {
       body: _isUploading 
         ? const Center(child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [CircularProgressIndicator(), SizedBox(height: 10), Text("Uploading Images...")],
+            children: [CircularProgressIndicator(), SizedBox(height: 10), Text("Uploading Data...")],
           )) 
         : Padding(
             padding: const EdgeInsets.all(16.0),
@@ -250,24 +267,45 @@ class _ReportScreenState extends State<ReportScreen> {
 
                     const SizedBox(height: 20),
                     
-                    // --- MULTIPLE PHOTO UI ---
+                    // --- MEDIA UI (Photos & Video) ---
+                    const Text("Evidence (Photos & Video)", style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Photos Evidence", style: TextStyle(fontWeight: FontWeight.bold)),
-                        TextButton.icon(
-                          icon: const Icon(Icons.add_a_photo),
-                          label: const Text("Add Photos"),
-                          onPressed: _pickImages,
+                        // PHOTO BUTTON
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.add_a_photo),
+                            label: const Text("Add Photos"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[100],
+                              foregroundColor: Colors.blue[900],
+                            ),
+                            onPressed: _pickImages,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // VIDEO BUTTON
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.videocam),
+                            label: Text(_selectedVideo == null ? "Add Video" : "Video Added!"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _selectedVideo == null ? Colors.orange[100] : Colors.green[100],
+                              foregroundColor: _selectedVideo == null ? Colors.orange[900] : Colors.green[900],
+                            ),
+                            onPressed: _pickVideo,
+                          ),
                         ),
                       ],
                     ),
                     
-                    // Display Selected Images Horizontal List
+                    // Display Selected Images
                     if (_selectedImages.isNotEmpty)
                       Container(
                         height: 120,
-                        margin: const EdgeInsets.only(bottom: 10),
+                        margin: const EdgeInsets.only(top: 10, bottom: 10),
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: _selectedImages.length,
@@ -287,7 +325,6 @@ class _ReportScreenState extends State<ReportScreen> {
                                     ),
                                   ),
                                 ),
-                                // Delete Button
                                 Positioned(
                                   top: 0,
                                   right: 10,
@@ -308,18 +345,30 @@ class _ReportScreenState extends State<ReportScreen> {
                             );
                           },
                         ),
-                      )
-                    else 
-                      Container(
-                        height: 50,
-                        width: double.infinity,
+                      ),
+                    
+                    // Display Selected Video Indicator
+                    if (_selectedVideo != null)
+                       Container(
+                        margin: const EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          border: Border.all(color: Colors.grey.shade300),
+                          color: Colors.green[50],
+                          border: Border.all(color: Colors.green),
                           borderRadius: BorderRadius.circular(8)
                         ),
-                        child: const Center(child: Text("No photos selected", style: TextStyle(color: Colors.grey))),
-                      ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.green),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text("Video attached: ${path.basename(_selectedVideo!.path)}", overflow: TextOverflow.ellipsis)),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              onPressed: () => setState(() => _selectedVideo = null),
+                            )
+                          ],
+                        ),
+                       ),
 
                     const SizedBox(height: 20),
                     SizedBox(
@@ -334,19 +383,27 @@ class _ReportScreenState extends State<ReportScreen> {
                           if (_formKey.currentState!.validate()) {
                             setState(() => _isUploading = true);
                             
-                            // Upload Loop
+                            // 1. Upload Images
                             List<String> uploadedUrls = await _uploadImages();
+
+                            // 2. Upload Video (NEW) 
+                            String? videoDownloadUrl;
+                            if (_selectedVideo != null) {
+                               videoDownloadUrl = await ComplaintService().uploadVideo(_selectedVideo!);
+                            }
                             
                             String finalUserType = userType == 'Others' ? otherUserType : userType;
                             String finalCategory = category == 'Other' ? otherCategory : category;
 
+                            // 3. Submit Data
                             await ComplaintService().submitComplaint(
                               uid: user.uid, 
                               email: user.email,
                               title: title,
                               description: description,
                               category: finalCategory, 
-                              imageUrls: uploadedUrls, // Send LIST
+                              imageUrls: uploadedUrls,
+                              videoUrl: videoDownloadUrl, // <--- Send Video URL
                               fullName: fullName,
                               userType: finalUserType, 
                               matricNo: matricNo,

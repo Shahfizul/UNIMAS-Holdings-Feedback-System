@@ -1,12 +1,54 @@
+import 'dart:io'; // <--- 1. NEEDED FOR FILE
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // <--- 2. NEEDED FOR UPLOAD
 import '../models/complaint_model.dart';
 import 'notification_service.dart';
 
 class ComplaintService {
   final CollectionReference complaintCollection =
       FirebaseFirestore.instance.collection('complaints');
+      
+  // 3. STORAGE INSTANCE (Required for video upload)
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // 2. SUBMIT COMPLAINT
+  // --- NEW: UPLOAD VIDEO METHOD ---
+  Future<String?> uploadVideo(File videoFile) async {
+    try {
+      // Create a unique filename using timestamp
+      String fileName = "${DateTime.now().millisecondsSinceEpoch}.mp4";
+      
+      // Create reference: complaint_videos/12345678.mp4
+      Reference ref = _storage.ref().child('complaint_videos/$fileName');
+      
+      // Start Upload
+      UploadTask uploadTask = ref.putFile(videoFile);
+      
+      // Wait for completion
+      TaskSnapshot snapshot = await uploadTask;
+      
+      // Get the URL
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      print("Error uploading video: $e");
+      return null;
+    }
+  }
+
+  // --- NEW: UPLOAD IMAGE METHOD (If you don't have it yet) ---
+  Future<String?> uploadImage(File imageFile) async {
+    try {
+      String fileName = "${DateTime.now().millisecondsSinceEpoch}.jpg";
+      Reference ref = _storage.ref().child('complaint_images/$fileName');
+      UploadTask uploadTask = ref.putFile(imageFile);
+      TaskSnapshot snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      print("Error uploading image: $e");
+      return null;
+    }
+  }
+
+  // 2. SUBMIT COMPLAINT (Updated)
   Future<void> submitComplaint({
     required String uid,
     required String email,
@@ -14,6 +56,7 @@ class ComplaintService {
     required String description,
     required String category,
     List<String> imageUrls = const [],
+    String? videoUrl, // <--- 4. NEW PARAMETER
     required String fullName,
     required String userType,
     required String matricNo,
@@ -23,26 +66,25 @@ class ComplaintService {
   }) async {
     
     // 1. SET DEFAULT PRIORITY
-    // We send "Analyzing..." initially. The Cloud Function will update it 
-    // to "High", "Medium", or "Low" after a few seconds.
     String priority = "Analyzing..."; 
 
-    // 2. GENERATE DOCUMENT REFERENCE (To get the ID first)
+    // 2. GENERATE DOCUMENT REFERENCE
     DocumentReference docRef = complaintCollection.doc();
 
     // 3. CREATE MODEL
     ComplaintModel complaint = ComplaintModel(
-      id: docRef.id, // <--- IMPORTANT: Use the generated ID
+      id: docRef.id,
       uid: uid,
       email: email,
       title: title,
       description: description,
       category: category,
       status: 'Pending',
-      
-      priority: priority, // Send "Analyzing..."
+      priority: priority, 
       
       imageUrls: imageUrls,
+      videoUrl: videoUrl, // <--- 5. SAVE IT HERE
+      
       timestamp: DateTime.now(),
       fullName: fullName,
       userType: userType,
@@ -50,6 +92,10 @@ class ComplaintService {
       contactNumber: contactNumber,
       building: building,
       roomNumber: roomNumber,
+      
+      // Explicitly set these to match your Model structure if needed, 
+      // but your Model class handles defaults nicely.
+      assignedTo: null, 
     );
 
     // 4. SAVE TO FIRESTORE
@@ -67,7 +113,7 @@ class ComplaintService {
   // 3. GET ALL COMPLAINTS (Live Stream for Admin)
   Stream<List<ComplaintModel>> get allComplaints {
     return complaintCollection
-        .orderBy('timestamp', descending: true) // Newest first
+        .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
@@ -84,18 +130,18 @@ class ComplaintService {
       'status': 'In Progress',
     });
 
-    // B. Fetch Complaint Data (Needed to find WHO the resident is)
+    // B. Fetch Complaint Data
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String residentId = doc.get('uid');
     String title = doc.get('title');
 
-    // C. NOTIFY MAINTAINER (Existing logic)
+    // C. NOTIFY MAINTAINER
     await NotificationService().sendNotification(
       userId: maintainerId,
       title: "New Job Assigned",
       body: "You have been assigned to '$title'.",
       type: 'alert',
-      complaintId: complaintId, // <--- AND HERE
+      complaintId: complaintId,
     );
 
     // D. NOTIFY RESIDENT
@@ -104,14 +150,14 @@ class ComplaintService {
       title: "Complaint Update",
       body: "Your complaint '$title' is now In Progress.",
       type: 'info',
-      complaintId: complaintId, // <--- PASS THE ID HERE
+      complaintId: complaintId,
     );
   }
 
   // 5. GET JOBS ASSIGNED TO SPECIFIC MAINTAINER
   Stream<List<ComplaintModel>> getAssignedComplaints(String maintainerUid) {
     return complaintCollection
-        .where('assignedTo', isEqualTo: maintainerUid) // <--- The Filter
+        .where('assignedTo', isEqualTo: maintainerUid)
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -137,21 +183,21 @@ class ComplaintService {
       'inspectionResult': inspectionResult,
     });
 
-    // B. Fetch Data (Need Resident ID and Title)
+    // B. Fetch Data
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String residentId = doc.get('uid');
     String title = doc.get('title');
 
-    // C. Notify Resident (Existing)
+    // C. Notify Resident
     await NotificationService().sendNotification(
       userId: residentId,
       title: "Work Completed",
       body: "Maintainer finished '$title'. Pending Admin verification.",
       type: 'info',
-      complaintId: complaintId, // <--- PASS ID
+      complaintId: complaintId,
     );
 
-    // D. NOTIFY ADMINS (--- NEW ADDITION ---)
+    // D. NOTIFY ADMINS
     await NotificationService().notifyAdmins(
       title: "Verification Required",
       body: "Maintainer has resolved '$title'. Please review the DCP.",
@@ -160,31 +206,31 @@ class ComplaintService {
     );
   }
 
-  // 7. ADMIN VERIFY (Final Approval - Section 5)
+  // 7. ADMIN VERIFY
   Future<void> verifyComplaint(String complaintId) async {
-    // A. Update Status in Database
+    // A. Update Status
     await complaintCollection.doc(complaintId).update({
       'status': 'Resolved', 
       'isVerified': true,
       'verifiedAt': FieldValue.serverTimestamp(),
     });
 
-    // B. Fetch the complaint details
+    // B. Fetch details
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String residentId = doc.get('uid');
     String title = doc.get('title');
-    String? maintainerId = doc.get('assignedTo'); // <--- Get Maintainer ID
+    String? maintainerId = doc.get('assignedTo');
 
-    // C. Notify Resident (Existing)
+    // C. Notify Resident
     await NotificationService().sendNotification(
       userId: residentId,
       title: "Complaint Resolved",
       body: "Your complaint '$title' has been verified and closed.",
       type: 'success',
-      complaintId: complaintId, // <--- PASS ID
+      complaintId: complaintId, 
     );
 
-    // D. NOTIFY MAINTAINER (--- NEW ADDITION ---)
+    // D. NOTIFY MAINTAINER
     if (maintainerId != null) {
       await NotificationService().sendNotification(
         userId: maintainerId,
@@ -196,7 +242,7 @@ class ComplaintService {
     }
   }
 
-  // 8. ADMIN REJECT (Re-opens the job)
+  // 8. ADMIN REJECT
   Future<void> rejectComplaint(String complaintId, String reason) async {
     await complaintCollection.doc(complaintId).update({
       'status': 'In Progress',
@@ -204,7 +250,7 @@ class ComplaintService {
       'adminRemarks': reason,
     });
 
-    // Notify Maintainer (We need to fetch the doc to get assignedTo)
+    // Notify Maintainer
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String? maintainerId = doc.get('assignedTo');
 
@@ -218,27 +264,53 @@ class ComplaintService {
     }
   }
 
-  // 9. UNDO VERIFICATION (Fix accidental clicks)
+  // 9. UNDO VERIFICATION
   Future<void> undoVerification(String complaintId) async {
     return await complaintCollection.doc(complaintId).update({
-      'status': 'Pending Verification', // Send back to "To Verify" tab
+      'status': 'Pending Verification', 
       'isVerified': false,
-      'verifiedAt': FieldValue.delete(), // Remove the timestamp
+      'verifiedAt': FieldValue.delete(),
     });
   }
 
-  // 10. SUBMIT SERVICE RATING
+  // 10. SUBMIT SERVICE RATING (Updated with Notifications)
   Future<void> submitRating(String complaintId, double rating, String review) async {
+    // A. Update Database
     await complaintCollection.doc(complaintId).update({
       'rating': rating,
       'review': review,
     });
+
+    // B. Fetch Data (We need to know WHO to notify)
+    DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
+    String title = doc.get('title');
+    String? maintainerId = doc.get('assignedTo');
+    String residentName = doc.get('fullName');
+
+    // C. NOTIFY ADMINS (General Alert)
+    await NotificationService().notifyAdmins(
+      title: "New Feedback Received",
+      body: "$residentName rated '$title': $rating Stars ⭐",
+      type: 'success',
+      complaintId: complaintId,
+    );
+
+    // D. NOTIFY MAINTAINER (Personal Achievement)
+    if (maintainerId != null) {
+      await NotificationService().sendNotification(
+        userId: maintainerId,
+        title: "You got a Rating!",
+        body: "Resident gave you $rating Stars for '$title'.",
+        type: 'success',
+        complaintId: complaintId,
+      );
+    }
   }
 
-  // 11. GET COMPLAINTS FOR SPECIFIC RESIDENT (FR-10)
+  // 11. GET COMPLAINTS FOR SPECIFIC RESIDENT
   Stream<List<ComplaintModel>> getUserComplaints(String uid) {
     return complaintCollection
-        .where('uid', isEqualTo: uid) // Filter by Resident ID
+        .where('uid', isEqualTo: uid)
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
