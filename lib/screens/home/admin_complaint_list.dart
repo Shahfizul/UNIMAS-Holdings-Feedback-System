@@ -17,8 +17,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
   String _selectedBuilding = 'All';
   String _selectedCategory = 'All';
 
-  // --- 1. FIXED: CATEGORIES MATCHING REPORT SCREEN ---
-  // These must match the lists in report_screen.dart exactly.
+  // Categories matching report_screen.dart
   final List<String> _standardCategories = [
     'Furniture', 
     'Mechanical', 
@@ -26,7 +25,6 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
     'Plumbing/Sink', 
     'Waste Water', 
     'Wi-Fi',
-    // Note: Anything else (like user typed custom text) falls under "Other"
   ];
 
   @override
@@ -48,27 +46,25 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
       // B. Building Filter
       bool buildingMatch = _selectedBuilding == 'All' || job.building == _selectedBuilding;
 
-      // C. Smart Category Filter
+      // C. Category Filter
       bool categoryMatch = false;
       if (_selectedCategory == 'All') {
         categoryMatch = true;
       } else if (_selectedCategory == 'Other') {
-        // Match if the job's category is NOT in our standard list
         categoryMatch = !_standardCategories.contains(job.category);
       } else {
-        // Direct match
         categoryMatch = job.category == _selectedCategory;
       }
 
       return tabMatch && buildingMatch && categoryMatch;
     }).toList();
 
-    // 2. SAFE LIST GENERATION
+    // 2. SORTING (Newest First)
+    filteredList.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    // 3. DROPDOWN LISTS
     final List<String> buildings = ['All'];
-    buildings.addAll(allComplaints
-        .map((e) => e.building)
-        .whereType<String>()
-        .toSet());
+    buildings.addAll(allComplaints.map((e) => e.building ?? 'Unknown').whereType<String>().toSet());
 
     final List<String> categories = ['All', ..._standardCategories, 'Other'];
 
@@ -85,7 +81,6 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
           ),
           child: Row(
             children: [
-              // Building Filter
               Expanded(
                 child: _buildDropdown(
                   label: "Property",
@@ -96,7 +91,6 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                 ),
               ),
               const SizedBox(width: 15),
-              // Category Filter
               Expanded(
                 child: _buildDropdown(
                   label: "Category",
@@ -161,34 +155,18 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
               value: items.contains(value) ? value : 'All',
               icon: Icon(Icons.arrow_drop_down, color: Colors.blue[800]),
               style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w600),
-              
-              // --- 2. FIX: PREVENT OVERFLOW ---
-              // selectedItemBuilder tells Flutter how to render the text WHEN SELECTED.
-              // We force it to use ellipsis (...) if it's too long.
               selectedItemBuilder: (BuildContext context) {
                 return items.map<Widget>((String item) {
                   return Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      item,
-                      overflow: TextOverflow.ellipsis, // <--- Stops overflow!
-                      style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w600),
-                    ),
+                    child: Text(item, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   );
                 }).toList();
               },
-
               items: items.map<DropdownMenuItem<String>>((String val) {
                 return DropdownMenuItem<String>(
                   value: val,
-                  child: Row(
-                    children: [
-                      if (val == 'All') Icon(icon, size: 14, color: Colors.blue[800]),
-                      if (val == 'All') const SizedBox(width: 8),
-                      // Flexible prevents overflow inside the popup list too
-                      Flexible(child: Text(val, overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
+                  child: Text(val, overflow: TextOverflow.ellipsis),
                 );
               }).toList(),
               onChanged: onChanged,
@@ -200,12 +178,19 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
   }
 
   Widget _buildAdminCard(BuildContext context, ComplaintModel job) {
+    // 1. Status Colors
     Color statusColor = Colors.grey;
     if (job.status == 'Pending') statusColor = Colors.orange;
     else if (job.status == 'In Progress') statusColor = Colors.blue;
     else if (job.status == 'Pending Verification') statusColor = Colors.purple;
     else if (job.status == 'Resolved') statusColor = Colors.green;
     else if (job.status == 'Invalid') statusColor = Colors.red;
+
+    // 2. Priority Colors (New)
+    Color priorityColor = Colors.grey;
+    if (job.priority == 'High') priorityColor = Colors.red;
+    else if (job.priority == 'Medium') priorityColor = Colors.orange;
+    else if (job.priority == 'Low') priorityColor = Colors.green;
 
     return Card(
       elevation: 2,
@@ -216,7 +201,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: statusColor, width: 5)),
         ),
-        child: InkWell( // Use InkWell for better touch feedback
+        child: InkWell(
           onTap: () {
             Navigator.push(
               context,
@@ -228,7 +213,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title & Date
+                // ROW 1: Title + Action
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -241,7 +226,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                     ),
                     if (job.status == 'Pending')
                       IconButton(
-                        constraints: const BoxConstraints(), // Compact button
+                        constraints: const BoxConstraints(), 
                         padding: EdgeInsets.zero,
                         icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
                         tooltip: "Reject",
@@ -252,30 +237,80 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                   ],
                 ),
                 
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 
-                // Badges Row
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
+                // ROW 2: Priority Badge + Building Info
+                Row(
                   children: [
+                    // --- PRIORITY BADGE ---
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(4),
+                        color: priorityColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: priorityColor.withOpacity(0.3)),
                       ),
-                      child: Text("${job.building} • ${job.category}", style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.w500)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (job.priority == 'High') 
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4.0),
+                              child: Icon(Icons.warning_amber_rounded, size: 14, color: priorityColor),
+                            ),
+                          Text(
+                            job.priority.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11, 
+                              fontWeight: FontWeight.bold, 
+                              color: priorityColor,
+                              letterSpacing: 0.5
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    Text(
-                      job.status,
-                      style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 13),
+                    
+                    const SizedBox(width: 8),
+
+                    // --- LOCATION BADGE ---
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          "${job.building} • ${job.category}", 
+                          style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ),
                   ],
                 ),
 
-                // --- 3. BETTER HISTORY VIEW (Extra Details) ---
-                // Only show this block if we are in the History tab context
+                const SizedBox(height: 8),
+
+                // ROW 3: Status Text + Date
+                Row(
+                  children: [
+                    Text(
+                      job.status,
+                      style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.access_time, size: 12, color: Colors.grey[500]),
+                    const SizedBox(width: 4),
+                    Text(
+                      DateFormat('dd MMM, hh:mm a').format(job.timestamp),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+
+                // Extra details for History Tab
                 if (job.status == 'Invalid') ...[
                   const SizedBox(height: 8),
                   Container(
@@ -289,32 +324,6 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                     child: Text(
                       "Reason: ${job.adminRemarks ?? 'N/A'}",
                       style: TextStyle(color: Colors.red[800], fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ] else if (job.status == 'Resolved') ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.green.shade100),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.check_circle, size: 14, color: Colors.green),
-                        const SizedBox(width: 5),
-                        Text(
-                          "Verified on ${DateFormat('dd MMM').format(job.timestamp)}", // Ideally use verifiedAt
-                          style: TextStyle(color: Colors.green[800], fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                        if (job.rating > 0) ...[
-                          const Spacer(),
-                          const Icon(Icons.star, size: 14, color: Colors.amber),
-                          Text(" ${job.rating}", style: TextStyle(color: Colors.green[800], fontSize: 12, fontWeight: FontWeight.bold)),
-                        ]
-                      ],
                     ),
                   ),
                 ],
