@@ -1,6 +1,6 @@
-import 'dart:io'; // <--- 1. NEEDED FOR FILE
+import 'dart:io'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // <--- 2. NEEDED FOR UPLOAD
+import 'package:firebase_storage/firebase_storage.dart'; 
 import '../models/complaint_model.dart';
 import 'notification_service.dart';
 
@@ -8,25 +8,15 @@ class ComplaintService {
   final CollectionReference complaintCollection =
       FirebaseFirestore.instance.collection('complaints');
       
-  // 3. STORAGE INSTANCE (Required for video upload)
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // --- NEW: UPLOAD VIDEO METHOD ---
+  // --- UPLOAD VIDEO ---
   Future<String?> uploadVideo(File videoFile) async {
     try {
-      // Create a unique filename using timestamp
       String fileName = "${DateTime.now().millisecondsSinceEpoch}.mp4";
-      
-      // Create reference: complaint_videos/12345678.mp4
       Reference ref = _storage.ref().child('complaint_videos/$fileName');
-      
-      // Start Upload
       UploadTask uploadTask = ref.putFile(videoFile);
-      
-      // Wait for completion
       TaskSnapshot snapshot = await uploadTask;
-      
-      // Get the URL
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
       print("Error uploading video: $e");
@@ -34,7 +24,7 @@ class ComplaintService {
     }
   }
 
-  // --- NEW: UPLOAD IMAGE METHOD (If you don't have it yet) ---
+  // --- UPLOAD IMAGE ---
   Future<String?> uploadImage(File imageFile) async {
     try {
       String fileName = "${DateTime.now().millisecondsSinceEpoch}.jpg";
@@ -48,7 +38,7 @@ class ComplaintService {
     }
   }
 
-  // 2. SUBMIT COMPLAINT (Updated)
+  // 2. SUBMIT COMPLAINT
   Future<void> submitComplaint({
     required String uid,
     required String email,
@@ -56,7 +46,7 @@ class ComplaintService {
     required String description,
     required String category,
     List<String> imageUrls = const [],
-    String? videoUrl, // <--- 4. NEW PARAMETER
+    String? videoUrl,
     required String fullName,
     required String userType,
     required String matricNo,
@@ -65,13 +55,9 @@ class ComplaintService {
     required String roomNumber,
   }) async {
     
-    // 1. SET DEFAULT PRIORITY
     String priority = "Analyzing..."; 
-
-    // 2. GENERATE DOCUMENT REFERENCE
     DocumentReference docRef = complaintCollection.doc();
 
-    // 3. CREATE MODEL
     ComplaintModel complaint = ComplaintModel(
       id: docRef.id,
       uid: uid,
@@ -81,10 +67,8 @@ class ComplaintService {
       category: category,
       status: 'Pending',
       priority: priority, 
-      
       imageUrls: imageUrls,
-      videoUrl: videoUrl, // <--- 5. SAVE IT HERE
-      
+      videoUrl: videoUrl, 
       timestamp: DateTime.now(),
       fullName: fullName,
       userType: userType,
@@ -92,16 +76,11 @@ class ComplaintService {
       contactNumber: contactNumber,
       building: building,
       roomNumber: roomNumber,
-      
-      // Explicitly set these to match your Model structure if needed, 
-      // but your Model class handles defaults nicely.
       assignedTo: null, 
     );
 
-    // 4. SAVE TO FIRESTORE
     await docRef.set(complaint.toMap());
 
-    // 5. NOTIFY ADMINS
     await NotificationService().notifyAdmins(
       title: "New Complaint Received",
       body: "$fullName ($userType) reported: $title",
@@ -110,7 +89,7 @@ class ComplaintService {
     );
   }
 
-  // 3. GET ALL COMPLAINTS (Live Stream for Admin)
+  // 3. GET ALL COMPLAINTS
   Stream<List<ComplaintModel>> get allComplaints {
     return complaintCollection
         .orderBy('timestamp', descending: true)
@@ -124,18 +103,16 @@ class ComplaintService {
 
   // 4. ASSIGN MAINTAINER 
   Future<void> assignComplaint(String complaintId, String maintainerId) async {
-    // A. Update Database
     await complaintCollection.doc(complaintId).update({
       'assignedTo': maintainerId,
       'status': 'In Progress',
     });
 
-    // B. Fetch Complaint Data
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String residentId = doc.get('uid');
     String title = doc.get('title');
 
-    // C. NOTIFY MAINTAINER
+    // Notify Maintainer
     await NotificationService().sendNotification(
       userId: maintainerId,
       title: "New Job Assigned",
@@ -144,7 +121,7 @@ class ComplaintService {
       complaintId: complaintId,
     );
 
-    // D. NOTIFY RESIDENT
+    // Notify Resident
     await NotificationService().sendNotification(
       userId: residentId,
       title: "Complaint Update",
@@ -154,7 +131,7 @@ class ComplaintService {
     );
   }
 
-  // 5. GET JOBS ASSIGNED TO SPECIFIC MAINTAINER
+  // 5. GET ASSIGNED JOBS
   Stream<List<ComplaintModel>> getAssignedComplaints(String maintainerUid) {
     return complaintCollection
         .where('assignedTo', isEqualTo: maintainerUid)
@@ -174,7 +151,6 @@ class ComplaintService {
     required String actionTaken,     
     required String inspectionResult 
   }) async {
-    // A. Update Database
     await complaintCollection.doc(complaintId).update({
       'status': 'Pending Verification',
       'resolvedAt': FieldValue.serverTimestamp(),
@@ -183,12 +159,11 @@ class ComplaintService {
       'inspectionResult': inspectionResult,
     });
 
-    // B. Fetch Data
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String residentId = doc.get('uid');
     String title = doc.get('title');
 
-    // C. Notify Resident
+    // Notify Resident
     await NotificationService().sendNotification(
       userId: residentId,
       title: "Work Completed",
@@ -197,7 +172,7 @@ class ComplaintService {
       complaintId: complaintId,
     );
 
-    // D. NOTIFY ADMINS
+    // Notify Admins
     await NotificationService().notifyAdmins(
       title: "Verification Required",
       body: "Maintainer has resolved '$title'. Please review the DCP.",
@@ -208,20 +183,18 @@ class ComplaintService {
 
   // 7. ADMIN VERIFY
   Future<void> verifyComplaint(String complaintId) async {
-    // A. Update Status
     await complaintCollection.doc(complaintId).update({
       'status': 'Resolved', 
       'isVerified': true,
       'verifiedAt': FieldValue.serverTimestamp(),
     });
 
-    // B. Fetch details
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String residentId = doc.get('uid');
     String title = doc.get('title');
     String? maintainerId = doc.get('assignedTo');
 
-    // C. Notify Resident
+    // Notify Resident
     await NotificationService().sendNotification(
       userId: residentId,
       title: "Complaint Resolved",
@@ -230,7 +203,7 @@ class ComplaintService {
       complaintId: complaintId, 
     );
 
-    // D. NOTIFY MAINTAINER
+    // Notify Maintainer
     if (maintainerId != null) {
       await NotificationService().sendNotification(
         userId: maintainerId,
@@ -250,7 +223,6 @@ class ComplaintService {
       'adminRemarks': reason,
     });
 
-    // Notify Maintainer
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String? maintainerId = doc.get('assignedTo');
 
@@ -273,21 +245,19 @@ class ComplaintService {
     });
   }
 
-  // 10. SUBMIT SERVICE RATING (Updated with Notifications)
+  // 10. SUBMIT SERVICE RATING
   Future<void> submitRating(String complaintId, double rating, String review) async {
-    // A. Update Database
     await complaintCollection.doc(complaintId).update({
       'rating': rating,
       'review': review,
     });
 
-    // B. Fetch Data (We need to know WHO to notify)
     DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
     String title = doc.get('title');
     String? maintainerId = doc.get('assignedTo');
     String residentName = doc.get('fullName');
 
-    // C. NOTIFY ADMINS (General Alert)
+    // Notify Admins
     await NotificationService().notifyAdmins(
       title: "New Feedback Received",
       body: "$residentName rated '$title': $rating Stars ⭐",
@@ -295,7 +265,7 @@ class ComplaintService {
       complaintId: complaintId,
     );
 
-    // D. NOTIFY MAINTAINER (Personal Achievement)
+    // Notify Maintainer
     if (maintainerId != null) {
       await NotificationService().sendNotification(
         userId: maintainerId,
@@ -307,7 +277,7 @@ class ComplaintService {
     }
   }
 
-  // 11. GET COMPLAINTS FOR SPECIFIC RESIDENT
+  // 11. GET USER COMPLAINTS
   Stream<List<ComplaintModel>> getUserComplaints(String uid) {
     return complaintCollection
         .where('uid', isEqualTo: uid)
@@ -318,5 +288,27 @@ class ComplaintService {
         return ComplaintModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
       }).toList();
     });
+  }
+
+  // FR-17: MARK AS INVALID (Corrected)
+  Future<void> markAsInvalid(String complaintId, String reason) async {
+    await complaintCollection.doc(complaintId).update({
+      'status': 'Invalid',
+      'adminRemarks': reason,
+      'resolvedAt': FieldValue.serverTimestamp(),
+    });
+
+    DocumentSnapshot doc = await complaintCollection.doc(complaintId).get();
+    String residentId = doc.get('uid');
+    String title = doc.get('title');
+
+    // FIXED: Use 'complaintId' parameter, not 'extraData'
+    await NotificationService().sendNotification(
+      userId: residentId,
+      title: "Complaint Closed",
+      body: "Admin marked '$title' as Invalid: $reason",
+      type: 'alert',
+      complaintId: complaintId, // <--- CORRECTED
+    );
   }
 }

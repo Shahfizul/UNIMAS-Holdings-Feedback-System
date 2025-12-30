@@ -3,7 +3,7 @@ import '../../models/complaint_model.dart';
 import '../../models/user_model.dart'; 
 import '../../services/complaint_service.dart';
 import '../../services/database_service.dart';
-import '../../widgets/simple_video_player.dart'; // <--- 1. IMPORT THIS
+import '../../widgets/simple_video_player.dart'; 
 
 class ComplaintDetailScreen extends StatefulWidget {
   final ComplaintModel complaint;
@@ -18,6 +18,13 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // --- DETERMINE STATUS COLOR ---
+    Color statusColor = Colors.grey;
+    if (widget.complaint.status == 'Pending') statusColor = Colors.orange;
+    else if (widget.complaint.status == 'In Progress') statusColor = Colors.blue;
+    else if (widget.complaint.status == 'Resolved') statusColor = Colors.green;
+    else if (widget.complaint.status == 'Invalid') statusColor = Colors.red; // <--- Red for Invalid
+
     return Scaffold(
       appBar: AppBar(title: const Text("Complaint Details")),
       body: SingleChildScrollView(
@@ -94,9 +101,49 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 const SizedBox(width: 10),
                 Chip(label: Text(widget.complaint.category)),
                 const SizedBox(width: 10),
-                Chip(label: Text(widget.complaint.status)),
+                // --- COLORED STATUS CHIP ---
+                Chip(
+                  label: Text(
+                    widget.complaint.status, 
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                  ),
+                  backgroundColor: statusColor, // Uses the color we defined at the top
+                ),
               ],
             ),
+            
+            // --- NEW: REJECTION REASON BOX ---
+            if (widget.complaint.status == 'Invalid' && widget.complaint.adminRemarks != null) ...[
+              const SizedBox(height: 15),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  border: Border.all(color: Colors.red.shade200),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.block, color: Colors.red),
+                        SizedBox(width: 10),
+                        Text("REJECTED / INVALID", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      "Reason: ${widget.complaint.adminRemarks}",
+                      style: const TextStyle(fontSize: 16, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            // ---------------------------------
+
             const SizedBox(height: 10),
             const Text("Description:", style: TextStyle(fontWeight: FontWeight.bold)),
             Container(
@@ -160,7 +207,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               const SizedBox(height: 10),
               SizedBox(
                 height: 250,
-                child: SimpleVideoPlayer(videoUrl: widget.complaint.videoUrl!), // <--- USE WIDGET
+                child: SimpleVideoPlayer(videoUrl: widget.complaint.videoUrl!), 
               ),
               const SizedBox(height: 30),
             ],
@@ -168,7 +215,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             const Divider(thickness: 2),
 
             // --- SECTION 5: ADMIN ACTIONS ---
-            // 1. Assign Job (If Pending)
+            
+            // 1. Assign Job (ONLY If Pending)
             if (widget.complaint.status == 'Pending') ...[
               const Text(
                 "Assign to Maintainer",

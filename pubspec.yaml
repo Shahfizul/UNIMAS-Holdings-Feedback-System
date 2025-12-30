@@ -44,6 +44,8 @@ dependencies:
   firebase_messaging: ^16.1.0
   video_player: ^2.9.2 
   chewie: ^1.8.5
+  pdf: ^3.11.3
+  printing: ^5.14.2
 
 dev_dependencies:
   flutter_test:

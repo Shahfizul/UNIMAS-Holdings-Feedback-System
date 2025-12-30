@@ -26,7 +26,6 @@ class UserHomeScreen extends StatefulWidget {
 }
 
 class _UserHomeScreenState extends State<UserHomeScreen> {
-  
   @override
   void initState() {
     super.initState();
@@ -50,11 +49,15 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       stream: ComplaintService().getUserComplaints(user.uid),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Scaffold(body: Center(child: Text("Error: ${snapshot.error}")));
+          return Scaffold(
+            body: Center(child: Text("Error: ${snapshot.error}")),
+          );
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         List<ComplaintModel> allComplaints = snapshot.data ?? [];
@@ -85,7 +88,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                 ],
               ),
             ),
-            
+
             floatingActionButton: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -98,7 +101,9 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SuggestionScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const SuggestionScreen(),
+                      ),
                     );
                   },
                   child: const Icon(Icons.lightbulb),
@@ -112,7 +117,9 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ReportScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const ReportScreen(),
+                      ),
                     );
                   },
                 ),
@@ -121,14 +128,20 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
             body: TabBarView(
               children: [
-                ResidentComplaintList(allComplaints: allComplaints, isHistory: false),
-                ResidentComplaintList(allComplaints: allComplaints, isHistory: true),
+                ResidentComplaintList(
+                  allComplaints: allComplaints,
+                  isHistory: false,
+                ),
+                ResidentComplaintList(
+                  allComplaints: allComplaints,
+                  isHistory: true,
+                ),
                 ResidentSuggestionList(userUid: user.uid), // <--- NEW LIST
               ],
             ),
           ),
         );
-      }
+      },
     );
   }
 }
@@ -153,7 +166,10 @@ class ResidentSuggestionList extends StatelessWidget {
                 children: [
                   Icon(Icons.lightbulb_outline, size: 60, color: Colors.grey),
                   SizedBox(height: 10),
-                  Text("No suggestions yet.", style: TextStyle(color: Colors.grey)),
+                  Text(
+                    "No suggestions yet.",
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
             );
@@ -167,9 +183,14 @@ class ResidentSuggestionList extends StatelessWidget {
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   leading: CircleAvatar(
                     backgroundColor: Colors.teal.withOpacity(0.1),
                     child: const Icon(Icons.lightbulb, color: Colors.teal),
@@ -182,12 +203,19 @@ class ResidentSuggestionList extends StatelessWidget {
                     "${item.category} • ${DateFormat('dd MMM').format(item.timestamp)}",
                     style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   onTap: () {
                     // Navigate to Detail Screen
                     Navigator.push(
-                      context, 
-                      MaterialPageRoute(builder: (context) => SuggestionDetailScreen(suggestion: item))
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            SuggestionDetailScreen(suggestion: item),
+                      ),
                     );
                   },
                 ),
@@ -206,16 +234,19 @@ class ResidentComplaintList extends StatelessWidget {
   final bool isHistory;
 
   const ResidentComplaintList({
-    super.key, 
-    required this.allComplaints, 
-    required this.isHistory
+    super.key,
+    required this.allComplaints,
+    required this.isHistory,
   });
 
   @override
   Widget build(BuildContext context) {
     List<ComplaintModel> filteredList = allComplaints.where((job) {
       if (isHistory) {
-        return job.status == 'Resolved' || job.status == 'Pending Verification';
+        // Now includes 'Invalid' so users can see rejected requests
+        return job.status == 'Resolved' ||
+            job.status == 'Pending Verification' ||
+            job.status == 'Invalid';
       } else {
         return job.status == 'Pending' || job.status == 'In Progress';
       }
@@ -226,7 +257,11 @@ class ResidentComplaintList extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isHistory ? Icons.history : Icons.check_circle_outline, size: 80, color: Colors.grey[300]),
+            Icon(
+              isHistory ? Icons.history : Icons.check_circle_outline,
+              size: 80,
+              color: Colors.grey[300],
+            ),
             const SizedBox(height: 10),
             Text(
               isHistory ? "No past history." : "No active complaints.",
@@ -268,6 +303,10 @@ class ResidentComplaintList extends StatelessWidget {
         statusColor = Colors.green;
         statusIcon = Icons.check_circle;
         break;
+      case 'Invalid': // <--- 1. NEW STATUS CASE
+        statusColor = Colors.red;
+        statusIcon = Icons.cancel;
+        break;
     }
 
     return Card(
@@ -275,7 +314,10 @@ class ResidentComplaintList extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         leading: CircleAvatar(
           backgroundColor: statusColor.withOpacity(0.1),
           child: Icon(statusIcon, color: statusColor),
@@ -292,6 +334,21 @@ class ResidentComplaintList extends StatelessWidget {
             const SizedBox(height: 5),
             Text("${job.category} • ${job.priority} Priority"),
             const SizedBox(height: 5),
+
+            // --- 2. NEW: SHOW REJECTION REASON ---
+            if (job.status == 'Invalid')
+              Padding(
+                padding: const EdgeInsets.only(bottom: 5.0),
+                child: Text(
+                  "Rejected: ${job.adminRemarks ?? 'No reason given'}",
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+            // -------------------------------------
             Text(
               DateFormat('dd MMM yyyy, hh:mm a').format(job.timestamp),
               style: TextStyle(fontSize: 12, color: Colors.grey[500]),
@@ -301,12 +358,20 @@ class ResidentComplaintList extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
                   "Waiting for your rating ⭐",
-                  style: TextStyle(color: Colors.amber[800], fontWeight: FontWeight.bold, fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.amber[800],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
           ],
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: Colors.grey,
+        ),
         onTap: () {
           Navigator.push(
             context,

@@ -11,6 +11,7 @@ import 'admin_suggestion_list.dart';
 import 'create_maintainer_screen.dart';
 import 'user_approval_screen.dart';
 import '../../widgets/notification_badge.dart';
+import 'admin_stats_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -24,16 +25,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   @override
   void initState() {
     super.initState();
-    
-    // 1. Init Notifications
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = Provider.of<UserModel?>(context, listen: false);
       if (user != null) {
         NotificationService().initNotifications(user.uid);
       }
     });
-
-    // 2. Setup Listener
     _setupInteractedMessage();
   }
 
@@ -45,15 +42,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
 
-  // --- SAFE & SIMPLE HANDLER ---
   void _handleMessage(RemoteMessage message) {
     Map<String, dynamic> data = message.data;
-
-    // Only handle standard complaints.
-    // If it's a suggestion (complaintId is null), this block is skipped,
-    // and the app just opens naturally to the dashboard. No errors.
     if (data['complaintId'] != null) {
-       // Optional: Switch to Active tab if it's a complaint
        if(mounted) DefaultTabController.of(context).animateTo(0);
     }
   }
@@ -66,50 +57,49 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       value: ComplaintService().allComplaints,
       initialData: const [],
       child: DefaultTabController(
-        length: 4, 
+        length: 5, 
         child: Scaffold(
           appBar: AppBar(
-            title: const Text("Admin Dashboard"),
-            backgroundColor: Colors.redAccent,
+            title: const Text("Admin Dashboard", style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            backgroundColor: Colors.red[800], // Slightly darker red for professionalism
+            elevation: 0, // Flat look, let content shadow define depth
             actions: [
               if (user != null)
-                NotificationBadge(userId: user.uid),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: NotificationBadge(userId: user.uid),
+                ),
 
               IconButton(
-                icon: const Icon(Icons.how_to_reg), 
-                tooltip: "Pending Approvals",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const UserApprovalScreen()),
-                  );
-                },
+                icon: const Icon(Icons.how_to_reg_outlined), 
+                tooltip: "Approvals",
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserApprovalScreen())),
               ),
 
               IconButton(
-                icon: const Icon(Icons.person_add),
-                tooltip: "Register Staff",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CreateMaintainerScreen()),
-                  );
-                },
+                icon: const Icon(Icons.person_add_alt_1_outlined),
+                tooltip: "Add Staff",
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateMaintainerScreen())),
               ),
               
               IconButton(
-                icon: const Icon(Icons.logout),
+                icon: const Icon(Icons.logout_outlined),
+                tooltip: "Logout",
                 onPressed: () => AuthService().signOut(),
               ),
             ],
             bottom: const TabBar(
               indicatorColor: Colors.white,
+              indicatorWeight: 4,
+              labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
               isScrollable: true,
               tabs: [
-                Tab(icon: Icon(Icons.assignment), text: "Active"),
-                Tab(icon: Icon(Icons.verified_user), text: "To Verify"),
-                Tab(icon: Icon(Icons.history), text: "History"),
-                Tab(icon: Icon(Icons.lightbulb), text: "Ideas"),
+                Tab(icon: Icon(Icons.assignment_outlined), text: "Active"),
+                Tab(icon: Icon(Icons.fact_check_outlined), text: "Verify"),
+                Tab(icon: Icon(Icons.history_outlined), text: "History"),
+                Tab(icon: Icon(Icons.lightbulb_outline), text: "Ideas"),
+                Tab(icon: Icon(Icons.bar_chart_outlined), text: "Stats"),
               ],
             ),
           ),
@@ -119,6 +109,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               AdminComplaintList(filterType: 'verify'),
               AdminComplaintList(filterType: 'history'),
               AdminSuggestionList(), 
+              AdminStatsScreen(),
             ],
           ),
         ),

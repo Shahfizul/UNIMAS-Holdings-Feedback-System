@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../models/complaint_model.dart';
 import '../../services/complaint_service.dart';
-import '../../widgets/simple_video_player.dart'; // <--- 1. IMPORT THIS
+import '../../widgets/simple_video_player.dart';
 
 class ResidentComplaintDetail extends StatefulWidget {
   final ComplaintModel job;
@@ -29,10 +29,12 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
         var data = snapshot.data!.data() as Map<String, dynamic>;
         ComplaintModel currentJob = ComplaintModel.fromMap(data, widget.job.id);
 
+        // 1. UPDATE STATUS COLORS (Added 'Invalid')
         Color statusColor = Colors.grey;
         if (currentJob.status == 'In Progress') statusColor = Colors.orange;
         if (currentJob.status == 'Resolved') statusColor = Colors.green;
         if (currentJob.status == 'Pending Verification') statusColor = Colors.blue;
+        if (currentJob.status == 'Invalid') statusColor = Colors.red; // <--- NEW
 
         return Scaffold(
           appBar: AppBar(
@@ -64,6 +66,38 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
                     ],
                   ),
                 ),
+                
+                // --- NEW: REJECTION REASON BOX (Only if Invalid) ---
+                if (currentJob.status == 'Invalid' && currentJob.adminRemarks != null) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      border: Border.all(color: Colors.red.shade200),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.red),
+                            SizedBox(width: 10),
+                            Text("Why was this rejected?", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          currentJob.adminRemarks!,
+                          style: const TextStyle(fontSize: 16, color: Colors.black87),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                
                 const SizedBox(height: 20),
 
                 // --- SECTION 2: LOCATION & CONTACT ---
@@ -136,19 +170,20 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
                   const SizedBox(height: 20),
                 ],
 
-                // --- SECTION 4.5: VIDEO (NEW) ---
+                // --- SECTION 4.5: VIDEO ---
                 if (currentJob.videoUrl != null && currentJob.videoUrl!.isNotEmpty) ...[
                   const Text("🎥 Video Evidence", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
                   const SizedBox(height: 10),
                   SizedBox(
-                    height: 250, // Height for video player
-                    child: SimpleVideoPlayer(videoUrl: currentJob.videoUrl!), // <--- USE THE WIDGET
+                    height: 250, 
+                    child: SimpleVideoPlayer(videoUrl: currentJob.videoUrl!),
                   ),
                   const SizedBox(height: 20),
                 ],
 
-                // --- SECTION 5: MAINTAINER REPORT ---
-                if (currentJob.findings.isNotEmpty || currentJob.actionTaken.isNotEmpty) ...[
+                // --- SECTION 5: MAINTAINER REPORT (Only if valid) ---
+                // We hide this if status is Invalid because no maintenance was done.
+                if (currentJob.status != 'Invalid' && (currentJob.findings.isNotEmpty || currentJob.actionTaken.isNotEmpty)) ...[
                   const Divider(thickness: 2),
                   const Text("🛠️ Maintenance Report", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
                   const SizedBox(height: 10),
@@ -166,7 +201,7 @@ class _ResidentComplaintDetailState extends State<ResidentComplaintDetail> {
 
                 const Divider(height: 40),
 
-                // --- SECTION 6: RATING ---
+                // --- SECTION 6: RATING (Only if Resolved) ---
                 if (currentJob.status == 'Resolved') 
                   _buildRatingSection(currentJob),
               ],
