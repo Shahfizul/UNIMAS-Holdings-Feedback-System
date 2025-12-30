@@ -8,10 +8,10 @@ import '../../services/complaint_service.dart';
 import '../../services/notification_service.dart';
 import 'admin_complaint_list.dart'; 
 import 'admin_suggestion_list.dart'; 
-import 'create_maintainer_screen.dart';
 import 'user_approval_screen.dart';
 import '../../widgets/notification_badge.dart';
 import 'admin_stats_screen.dart';
+import 'manage_maintainers_screen.dart'; // <--- NEW IMPORT
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -76,10 +76,17 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserApprovalScreen())),
               ),
 
+              // --- UPDATED BUTTON ---
               IconButton(
-                icon: const Icon(Icons.person_add_alt_1_outlined),
-                tooltip: "Add Staff",
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateMaintainerScreen())),
+                icon: const Icon(Icons.manage_accounts_outlined), // Changed Icon
+                tooltip: "Manage Staff", // Changed Tooltip
+                onPressed: () {
+                  // Navigate to the NEW Management Screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ManageMaintainersScreen()),
+                  );
+                },
               ),
               
               IconButton(

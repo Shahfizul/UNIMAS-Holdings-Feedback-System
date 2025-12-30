@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../models/complaint_model.dart';
 import '../../models/user_model.dart'; 
 import '../../services/complaint_service.dart';
@@ -23,7 +24,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     if (widget.complaint.status == 'Pending') statusColor = Colors.orange;
     else if (widget.complaint.status == 'In Progress') statusColor = Colors.blue;
     else if (widget.complaint.status == 'Resolved') statusColor = Colors.green;
-    else if (widget.complaint.status == 'Invalid') statusColor = Colors.red; // <--- Red for Invalid
+    else if (widget.complaint.status == 'Invalid') statusColor = Colors.red;
 
     return Scaffold(
       appBar: AppBar(title: const Text("Complaint Details")),
@@ -107,12 +108,12 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     widget.complaint.status, 
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
                   ),
-                  backgroundColor: statusColor, // Uses the color we defined at the top
+                  backgroundColor: statusColor, 
                 ),
               ],
             ),
             
-            // --- NEW: REJECTION REASON BOX ---
+            // --- REJECTION REASON BOX ---
             if (widget.complaint.status == 'Invalid' && widget.complaint.adminRemarks != null) ...[
               const SizedBox(height: 15),
               Container(
@@ -142,7 +143,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 ),
               ),
             ],
-            // ---------------------------------
 
             const SizedBox(height: 10),
             const Text("Description:", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -198,7 +198,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               const SizedBox(height: 20),
             ],
 
-            // --- SECTION 4.5: VIDEO EVIDENCE (NEW) ---
+            // --- SECTION 4.5: VIDEO EVIDENCE ---
             if (widget.complaint.videoUrl != null && widget.complaint.videoUrl!.isNotEmpty) ...[
               const Text(
                 "🎥 Video Evidence",
@@ -232,14 +232,43 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                   return DropdownButtonFormField<String>(
                     value: selectedMaintainerId,
                     hint: const Text("Select Staff Member"),
+                    isExpanded: true,
+                    // FIX: Set a larger height for the menu items to accommodate the Column
+                    itemHeight: null, // Allows dynamic height in the menu
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    
+                    // --- THE KEY FIX: selectedItemBuilder ---
+                    // This defines what is shown inside the CLOSED button (Single Line)
+                    selectedItemBuilder: (BuildContext context) {
+                      return maintainers.map<Widget>((UserModel m) {
+                        return Text(
+                          "${m.fullName} (${m.specialization ?? 'General'})", 
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.black87),
+                        );
+                      }).toList();
+                    },
+
+                    // This defines what is shown in the OPEN list (Multi Line / Column)
                     items: maintainers.map((m) {
                       return DropdownMenuItem(
                         value: m.uid,
-                        child: Text("${m.fullName} (${m.email})"), 
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min, // shrink wrap
+                            children: [
+                              Text(m.fullName ?? "Unknown", style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text("${m.specialization ?? 'General'} • ${m.contactNumber ?? ''}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            ],
+                          ),
+                        ), 
                       );
                     }).toList(),
+                    
                     onChanged: (val) => setState(() => selectedMaintainerId = val),
-                    decoration: const InputDecoration(border: OutlineInputBorder()),
                   );
                 },
               ),
@@ -270,17 +299,48 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             ] else if (widget.complaint.status == 'In Progress') ...[
               Container(
                 padding: const EdgeInsets.all(15),
-                color: Colors.blue[50],
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blue.shade100),
+                ),
                 child: Row(
                   children: [
-                    const Icon(Icons.build_circle, color: Colors.blue),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Job is currently In Progress", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                        Text("Assigned to ID: ${widget.complaint.assignedTo ?? 'Unknown'}"),
-                      ],
+                    const Icon(Icons.build_circle, color: Colors.blue, size: 30),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("JOB IN PROGRESS", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                          const SizedBox(height: 5),
+                          
+                          // --- 2. FETCH & DISPLAY MAINTAINER NAME ---
+                          FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance.collection('users').doc(widget.complaint.assignedTo).get(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) return const Text("Loading staff details...");
+                              var data = snapshot.data!.data() as Map<String, dynamic>?;
+                              
+                              if (data == null) return const Text("Staff info unavailable");
+                              
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Assigned to: ${data['fullName'] ?? 'Unknown'}",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  ),
+                                  Text(
+                                    "${data['specialization'] ?? 'General'} • ${data['contactNumber'] ?? ''}",
+                                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

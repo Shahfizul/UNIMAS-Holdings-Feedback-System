@@ -5,7 +5,6 @@ class DatabaseService {
   final String? uid;
   DatabaseService({this.uid});
 
-  // Collection Reference
   final CollectionReference userCollection =
       FirebaseFirestore.instance.collection('users');
 
@@ -18,6 +17,7 @@ class DatabaseService {
     String? idType,
     String? idNumber,
     String? contactNumber,
+    String? specialization, // <--- Added
   }) async {
     return await userCollection.doc(uid).set({
       'email': email,
@@ -27,6 +27,7 @@ class DatabaseService {
       'idType': idType,
       'idNumber': idNumber,
       'contactNumber': contactNumber,
+      'specialization': specialization, // <--- Added
     });
   }
 
@@ -37,18 +38,12 @@ class DatabaseService {
         return UserModel.fromMap(
             snapshot.data() as Map<String, dynamic>, snapshot.id);
       } else {
-        // FIX: Added 'isApproved: false' to match the constructor
-        return UserModel(
-          uid: uid!, 
-          email: '', 
-          role: 'resident', 
-          isApproved: false
-        );
+        return UserModel(uid: uid!, email: '', role: 'resident', isApproved: false);
       }
     });
   }
 
-  // Get List of All Maintainers
+  // 1. GET ACTIVE MAINTAINERS
   Stream<List<UserModel>> get maintainers {
     return userCollection
         .where('role', isEqualTo: 'maintainer')
@@ -61,7 +56,41 @@ class DatabaseService {
     });
   }
 
-  // 1. GET PENDING RESIDENTS (Stream)
+  // 2. GET ARCHIVED MAINTAINERS (FR-13: Archive)
+  Stream<List<UserModel>> get archivedMaintainers {
+    return userCollection
+        .where('role', isEqualTo: 'maintainer')
+        .where('isApproved', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+    });
+  }
+
+  // 3. EDIT MAINTAINER (FR-13: Edit)
+  Future<void> updateMaintainerDetails({
+    required String uid,
+    required String fullName,
+    required String contactNumber,
+    required String specialization,
+  }) async {
+    return await userCollection.doc(uid).update({
+      'fullName': fullName,
+      'contactNumber': contactNumber,
+      'specialization': specialization,
+    });
+  }
+
+  // 4. ARCHIVE/RESTORE (Toggle Status)
+  Future<void> toggleMaintainerStatus(String uid, bool isActive) async {
+    return await userCollection.doc(uid).update({
+      'isApproved': isActive,
+    });
+  }
+
+  // 5. GET PENDING RESIDENTS
   Stream<List<UserModel>> get pendingResidents {
     return userCollection
         .where('role', isEqualTo: 'resident')
@@ -74,14 +103,12 @@ class DatabaseService {
     });
   }
 
-  // 2. APPROVE USER
+  // 6. APPROVE RESIDENT
   Future<void> approveUser(String uid) async {
-    return await userCollection.doc(uid).update({
-      'isApproved': true,
-    });
+    return await userCollection.doc(uid).update({'isApproved': true});
   }
 
-  // 3. REJECT USER (Deletes the profile so they cannot log in)
+  // 7. REJECT RESIDENT
   Future<void> rejectUser(String uid) async {
     return await userCollection.doc(uid).delete();
   }

@@ -4,11 +4,12 @@ class UserModel {
   final String role; // 'resident', 'admin', 'maintainer'
   final bool isApproved;
   
-  // --- NEW PROFILE FIELDS ---
+  // --- PROFILE FIELDS ---
   final String? fullName;
-  final String? idType;   // 'Matric No', 'Passport', 'NRIC'
-  final String? idNumber; // The actual number (e.g., 99451)
+  final String? idType;
+  final String? idNumber;
   final String? contactNumber;
+  final String? specialization; // <--- NEW FIELD
 
   UserModel({
     required this.uid,
@@ -19,6 +20,7 @@ class UserModel {
     this.idType,
     this.idNumber,
     this.contactNumber,
+    this.specialization, // <--- Add to constructor
   });
 
   Map<String, dynamic> toMap() {
@@ -31,6 +33,7 @@ class UserModel {
       'idType': idType,
       'idNumber': idNumber,
       'contactNumber': contactNumber,
+      'specialization': specialization, // <--- Add to Map
     };
   }
 
@@ -38,18 +41,13 @@ class UserModel {
     return UserModel(
       uid: uid,
       email: data['email'] ?? '',
-      // --- THE FIX ---
-      // 1. Handle missing role
-      // 2. Convert to String safely
-      // 3. Force lowercase (fixes 'Maintainer' vs 'maintainer')
-      // 4. Remove extra spaces (.trim)
       role: (data['role'] ?? 'resident').toString().trim().toLowerCase(),
-      
       isApproved: data['isApproved'] ?? false,
       fullName: data['fullName'],
       idType: data['idType'],
       idNumber: data['idNumber'],
       contactNumber: data['contactNumber'],
+      specialization: data['specialization'], // <--- Read from Map
     );
   }
 }
