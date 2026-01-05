@@ -12,7 +12,7 @@ import '../../services/notification_service.dart';
 // Screens & Widgets
 import '../complaint/maintainer_job_detail.dart'; 
 import '../../widgets/notification_badge.dart';
-import '../home/user_profile_page.dart'; // Reusing profile page if applicable
+import '../home/user_profile_page.dart';
 
 class MaintainerHomeScreen extends StatefulWidget {
   const MaintainerHomeScreen({super.key});
@@ -33,39 +33,27 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
     });
   }
 
-  // --- LOGOUT DIALOG (Matches User UI) ---
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            "Logout",
-            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.orange),
-          ),
-          content: const Text(
-            "Are you sure you want to exit the system?",
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text("Logout", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+          content: const Text("Are you sure you want to end your shift?", style: TextStyle(fontFamily: 'Poppins')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
                 await AuthService().signOut();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text("Logout", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: const Text("Logout", style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -85,13 +73,15 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
       value: ComplaintService().getAssignedComplaints(user.uid),
       initialData: const [],
       child: DefaultTabController(
-        length: 2,
+        length: 3, // 3 Tabs: Active, Pending, History
         child: Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFFF5F7FA),
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 0.5,
             centerTitle: true,
+            
+            // --- 1. ORIGINAL PROFILE ICON RESTORED ---
             leading: Padding(
               padding: const EdgeInsets.only(left: 8.0),
               child: PopupMenuButton<String>(
@@ -102,10 +92,16 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(color: Colors.grey.shade200, width: 1),
                 ),
+                child: Center(
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.grey.shade200,
+                    child: const Icon(Icons.person, size: 24, color: Colors.grey),
+                  ),
+                ),
                 onSelected: (value) {
-                  if (value == 'logout') {
-                    _showLogoutDialog(context);
-                  } else if (value == 'profile') {
+                  if (value == 'logout') _showLogoutDialog(context);
+                  if (value == 'profile') {
                     Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
                   }
                 },
@@ -118,6 +114,7 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
                       title: Text('My Profile', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
                     ),
                   ),
+                  const PopupMenuDivider(),
                   const PopupMenuItem(
                     value: 'logout',
                     child: ListTile(
@@ -127,61 +124,55 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
                     ),
                   ),
                 ],
-                child: Center(
-                  child: CircleAvatar(
-                    radius: 15,
-                    backgroundColor: Colors.grey.shade200,
-                    child: const Icon(Icons.person, size: 20, color: Colors.grey),
-                  ),
-                ),
               ),
             ),
+            
             title: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'MAINTENANCE UNIT',
+                const Text(
+                  'Maintainer Dashboard',
                   style: TextStyle(
-                    color: Colors.yellow.shade800,
+                    color: Color(0xFF003366),
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 18,
                     fontFamily: 'Poppins',
-                    letterSpacing: 1.2,
                   ),
                 ),
                 Text(
-                  'Staff Work Portal'.toUpperCase(),
+                  'UNIMAS Holdings',
                   style: TextStyle(
-                    color: Colors.grey.shade800,
+                    color: Colors.grey.shade500,
                     fontSize: 10,
                     fontFamily: 'Poppins',
-                    letterSpacing: 1.0,
                   ),
                 ),
               ],
             ),
             actions: [
               Padding(
-                padding: const EdgeInsets.only(right: 8.0),
+                padding: const EdgeInsets.only(right: 16.0),
                 child: NotificationBadge(userId: user.uid),
               ),
             ],
-            bottom: TabBar(
-              labelColor: Colors.yellow.shade900,
+            bottom: const TabBar(
+              labelColor: Color(0xFF003366),
               unselectedLabelColor: Colors.grey,
-              indicatorColor: Colors.orange,
+              indicatorColor: Color(0xFF003366),
               indicatorWeight: 3,
               labelStyle: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12),
               tabs: [
-                Tab(text: "Active Jobs"),
-                Tab(text: "Work History"),
+                Tab(text: "Active"),   // In Progress
+                Tab(text: "Pending"),  // Verify / Waiting
+                Tab(text: "History"),  // Done
               ],
             ),
           ),
           body: const TabBarView(
             children: [
-              JobTabList(statusFilter: 'In Progress'),
-              JobTabList(statusFilter: 'History'),
+              JobTabList(tabType: 'active'),
+              JobTabList(tabType: 'pending_verification'),
+              JobTabList(tabType: 'history'),
             ],
           ),
         ),
@@ -190,10 +181,10 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
   }
 }
 
-// --- NEW COMPONENT: JOB TAB LIST WITH INDIVIDUAL FILTERS ---
+// --- JOB LIST COMPONENT ---
 class JobTabList extends StatefulWidget {
-  final String statusFilter;
-  const JobTabList({super.key, required this.statusFilter});
+  final String tabType; 
+  const JobTabList({super.key, required this.tabType});
 
   @override
   State<JobTabList> createState() => _JobTabListState();
@@ -203,9 +194,27 @@ class _JobTabListState extends State<JobTabList> {
   String _sortBy = 'Latest';
   String _priorityFilter = 'All';
 
-  void _showFilterOptions() {
+  // --- COLOR HELPERS (Your Rules) ---
+  Color _getStatusColor(String status) {
+    if (status == 'Pending') return Colors.orange; // or Yellow
+    if (status == 'In Progress') return Colors.blue;
+    if (status == 'Pending Verification') return Colors.purple;
+    if (status == 'Resolved') return Colors.green;
+    if (status == 'Invalid') return Colors.red;
+    return Colors.grey;
+  }
+
+  Color _getPriorityColor(String priority) {
+    if (priority == 'High') return Colors.red;
+    if (priority == 'Medium') return Colors.orange; 
+    if (priority == 'Low') return Colors.green;
+    return Colors.grey;
+  }
+
+  void _showSortOptions() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return StatefulBuilder(builder: (context, setModalState) {
@@ -215,33 +224,49 @@ class _JobTabListState extends State<JobTabList> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Sort & Filter Jobs", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text("Sort & Filter", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16)),
                 const Divider(),
-                const Text("Order", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                
+                const Text("Date Order", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     ChoiceChip(
-                      label: const Text("Latest"),
+                      label: const Text("Latest First"),
                       selected: _sortBy == 'Latest',
+                      selectedColor: const Color(0xFF003366).withOpacity(0.1),
+                      labelStyle: TextStyle(color: _sortBy == 'Latest' ? const Color(0xFF003366) : Colors.black),
                       onSelected: (s) { setState(() => _sortBy = 'Latest'); setModalState(() {}); },
                     ),
                     const SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text("Oldest"),
+                      label: const Text("Oldest First"),
                       selected: _sortBy == 'Oldest',
+                      selectedColor: const Color(0xFF003366).withOpacity(0.1),
+                      labelStyle: TextStyle(color: _sortBy == 'Oldest' ? const Color(0xFF003366) : Colors.black),
                       onSelected: (s) { setState(() => _sortBy = 'Oldest'); setModalState(() {}); },
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                const Text("Priority", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                
+                const SizedBox(height: 20),
+
+                const Text("Priority Level", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
-                  children: ["All", "Low", "Medium", "High"].map((p) => ChoiceChip(
-                    label: Text(p),
-                    selected: _priorityFilter == p,
-                    onSelected: (s) { setState(() => _priorityFilter = p); setModalState(() {}); },
-                  )).toList(),
+                  children: ["All", "High", "Medium", "Low"].map((p) {
+                    return ChoiceChip(
+                      label: Text(p),
+                      selected: _priorityFilter == p,
+                      selectedColor: _getPriorityColor(p).withOpacity(0.2),
+                      labelStyle: TextStyle(
+                        color: _priorityFilter == p ? _getPriorityColor(p) : Colors.black,
+                        fontWeight: _priorityFilter == p ? FontWeight.bold : FontWeight.normal
+                      ),
+                      onSelected: (s) { setState(() => _priorityFilter = p); setModalState(() {}); },
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 20),
               ],
@@ -256,14 +281,14 @@ class _JobTabListState extends State<JobTabList> {
   Widget build(BuildContext context) {
     final allJobs = Provider.of<List<ComplaintModel>>(context);
     
-    // 1. Filter by Status
+    // 1. Filter by Tab
     List<ComplaintModel> filteredJobs;
-    if (widget.statusFilter == 'In Progress') {
+    if (widget.tabType == 'active') {
       filteredJobs = allJobs.where((job) => job.status == 'In Progress').toList();
+    } else if (widget.tabType == 'pending_verification') {
+      filteredJobs = allJobs.where((job) => job.status == 'Pending Verification').toList();
     } else {
-      filteredJobs = allJobs.where((job) => 
-        job.status == 'Pending Verification' || job.status == 'Resolved'
-      ).toList();
+      filteredJobs = allJobs.where((job) => job.status == 'Resolved' || job.status == 'Invalid').toList();
     }
 
     // 2. Filter by Priority
@@ -278,26 +303,36 @@ class _JobTabListState extends State<JobTabList> {
 
     return Column(
       children: [
-        // Professional Filter Chip (Matches User interface)
-        Padding(
+        // --- FILTER BUTTON ---
+        Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Colors.white,
           child: Row(
             children: [
               ActionChip(
-                avatar: Icon(Icons.tune, size: 16, color: Colors.yellow.shade800,),
-                label: Text("Sort: $_sortBy • $_priorityFilter", 
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Colors.yellow.shade900)),
-                backgroundColor: Colors.white,
-                onPressed: _showFilterOptions,
+                avatar: const Icon(Icons.tune, size: 16, color: Colors.white),
+                label: Text("Sort & Priority ($_priorityFilter)", style: const TextStyle(fontSize: 12, color: Colors.white)),
+                backgroundColor: const Color(0xFF003366),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                onPressed: _showSortOptions,
+              ),
+              const Spacer(),
+              Text(
+                "${filteredJobs.length} tasks", 
+                style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
               ),
             ],
           ),
         ),
+        
+        const Divider(height: 1),
+
+        // --- LIST VIEW ---
         Expanded(
           child: filteredJobs.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.all(16),
                   itemCount: filteredJobs.length,
                   itemBuilder: (context, index) => _buildJobCard(context, filteredJobs[index]),
                 ),
@@ -307,67 +342,164 @@ class _JobTabListState extends State<JobTabList> {
   }
 
   Widget _buildEmptyState() {
+    IconData icon = Icons.check_circle_outline;
+    String message = "No jobs found.";
+
+    if (widget.tabType == 'active') {
+      icon = Icons.handyman_outlined;
+      message = "No active jobs. You're free!";
+    } else if (widget.tabType == 'pending_verification') {
+      icon = Icons.hourglass_empty;
+      message = "No jobs waiting for approval.";
+    } else {
+      icon = Icons.history;
+      message = "No job history yet.";
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            widget.statusFilter == 'In Progress' ? Icons.task_alt : Icons.history, 
-            size: 80, color: Colors.grey[200]
-          ),
-          const SizedBox(height: 10),
-          Text(
-            widget.statusFilter == 'In Progress' ? "No active work orders." : "No job history yet.",
-            style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
-          ),
+          Icon(icon, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text(message, style: TextStyle(color: Colors.grey[500], fontFamily: 'Poppins', fontSize: 16)),
         ],
       ),
     );
   }
 
   Widget _buildJobCard(BuildContext context, ComplaintModel job) {
+    Color statusColor = _getStatusColor(job.status);
+    Color priorityColor = _getPriorityColor(job.priority);
+
+    // Icon logic
+    IconData statusIcon = Icons.info;
+    if (job.status == 'In Progress') statusIcon = Icons.build_circle;
+    else if (job.status == 'Pending Verification') statusIcon = Icons.hourglass_top;
+    else if (job.status == 'Resolved') statusIcon = Icons.check_circle;
+    else if (job.status == 'Invalid') statusIcon = Icons.cancel;
+
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade200, width: 1),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        leading: CircleAvatar(
-          backgroundColor: Colors.orange.withOpacity(0.1),
-          child: Icon(
-            widget.statusFilter == 'In Progress' ? Icons.build_circle : Icons.verified, 
-            color: Colors.orange
-          ),
-        ),
-        title: Text(
-          job.title, 
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Poppins'),
-          maxLines: 1, 
-          overflow: TextOverflow.ellipsis
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text("${job.category} • ${job.priority} Priority", style: const TextStyle(fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(
-              DateFormat('dd MMM yyyy, hh:mm a').format(job.timestamp),
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-            ),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => MaintainerJobDetail(job: job)),
           );
         },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Row 1: Status Badge
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(statusIcon, size: 14, color: statusColor),
+                        const SizedBox(width: 6),
+                        Text(job.status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.more_horiz, color: Colors.grey[400], size: 20),
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Row 2: Title
+              Text(
+                job.title, 
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Poppins'),
+                maxLines: 1, 
+                overflow: TextOverflow.ellipsis
+              ),
+              
+              const SizedBox(height: 8),
+
+              // Row 3: Priority & Category Pills
+              Row(
+                children: [
+                  // Priority
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: priorityColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: priorityColor.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      "${job.priority} Priority", 
+                      style: TextStyle(color: priorityColor, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  
+                  // Category
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.category, size: 10, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          job.category, 
+                          style: TextStyle(color: Colors.grey[700], fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+
+              // Row 4: Location & Date
+              Row(
+                children: [
+                  Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      "${job.building}, ${job.roomNumber}",
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  
+                  Text(
+                    DateFormat('dd MMM yyyy').format(job.timestamp),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

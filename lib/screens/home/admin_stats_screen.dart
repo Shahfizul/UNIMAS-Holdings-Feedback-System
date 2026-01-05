@@ -23,10 +23,6 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
   Widget build(BuildContext context) {
     final allComplaints = Provider.of<List<ComplaintModel>>(context);
 
-    if (allComplaints.isEmpty) {
-      return const Center(child: Text("Waiting for data..."));
-    }
-
     // --- 1. PREPARE DYNAMIC FILTER LISTS ---
     final Set<String> buildings = {'All', ...allComplaints.map((e) => e.building ?? 'Unknown').toSet()};
     final Set<String> categories = {
@@ -82,57 +78,64 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
     double completionRate = total == 0 ? 0 : (resolved / total) * 100;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- HEADER ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Analytics Dashboard",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.print, color: Colors.blueGrey),
-                  tooltip: "Download PDF Report",
-                  onPressed: () => _generatePdf(filteredList, total, resolved, pending, inProgress, completionRate),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-
-            // --- FILTER BAR ---
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
-              ),
-              child: SingleChildScrollView( 
+      backgroundColor: const Color(0xFFF5F7FA), // Light Grey Background
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        centerTitle: true,
+        leading: const BackButton(color: Color(0xFF003366)),
+        title: const Text(
+          "Analytics Dashboard",
+          style: TextStyle(
+            color: Color(0xFF003366),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.print_outlined, color: Color(0xFF003366)),
+            tooltip: "Download PDF Report",
+            onPressed: allComplaints.isEmpty 
+              ? null 
+              : () => _generatePdf(filteredList, total, resolved, pending, inProgress, completionRate),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      
+      body: allComplaints.isEmpty 
+        ? const Center(child: CircularProgressIndicator()) 
+        : SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- FILTER BAR (Clean Horizontal Scroll) ---
+              SingleChildScrollView( 
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip(
-                      label: "TIME PERIOD",
+                    _buildDropdownChip(
+                      icon: Icons.calendar_today,
+                      label: "Time",
                       value: _timeFilter,
                       items: timeOptions.toList(),
                       onChanged: (val) => setState(() => _timeFilter = val!),
                     ),
-                    const SizedBox(width: 15),
-                    _buildFilterChip(
-                      label: "PROPERTY",
+                    const SizedBox(width: 12),
+                    _buildDropdownChip(
+                      icon: Icons.business,
+                      label: "Property",
                       value: _buildingFilter,
                       items: buildings.toList(),
                       onChanged: (val) => setState(() => _buildingFilter = val!),
                     ),
-                    const SizedBox(width: 15),
-                    _buildFilterChip(
-                      label: "CATEGORY",
+                    const SizedBox(width: 12),
+                    _buildDropdownChip(
+                      icon: Icons.category_outlined,
+                      label: "Category",
                       value: _categoryFilter,
                       items: categories.toList(),
                       onChanged: (val) => setState(() => _categoryFilter = val!),
@@ -140,63 +143,48 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-            // --- KPI ROW ---
-            Row(
-              children: [
-                Expanded(child: _buildKPICard("Total Issues", "$total", Icons.folder_open, Colors.blue)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildKPICard("Completion", "${completionRate.toStringAsFixed(0)}%", Icons.pie_chart, Colors.green)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _buildKPICard("Pending", "$pending", Icons.assignment_late_outlined, Colors.orange)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildKPICard("In Progress", "$inProgress", Icons.engineering_outlined, Colors.purple)),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            // --- CHARTS ---
-            _buildSectionTitle("Issues by Category"),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+              // --- KPI GRID ---
+              Row(
+                children: [
+                  Expanded(child: _buildKPICard("Total Issues", "$total", Icons.folder_open, Colors.blue)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildKPICard("Completion", "${completionRate.toStringAsFixed(0)}%", Icons.pie_chart, Colors.green)),
+                ],
               ),
-              child: _buildCategoryBarChart(filteredList),
-            ),
-
-            const SizedBox(height: 30),
-
-            _buildSectionTitle("Property Hotspots"),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: _buildKPICard("Pending", "$pending", Icons.assignment_late_outlined, Colors.orange)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildKPICard("In Progress", "$inProgress", Icons.engineering_outlined, Colors.purple)),
+                ],
               ),
-              child: _buildPropertyHotspots(filteredList),
-            ),
-            
-            const SizedBox(height: 40),
-          ],
+
+              const SizedBox(height: 32),
+
+              // --- CHARTS SECTION ---
+              _buildChartSection(
+                title: "Issues by Category",
+                child: _buildCategoryBarChart(filteredList),
+              ),
+
+              const SizedBox(height: 24),
+
+              _buildChartSection(
+                title: "Property Hotspots",
+                child: _buildPropertyHotspots(filteredList),
+              ),
+              
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
-      ),
     );
   }
 
-  // --- 4. PDF GENERATOR FUNCTION (FIXED) ---
+  // --- PDF GENERATOR (Kept Logic, unchanged) ---
   Future<void> _generatePdf(
     List<ComplaintModel> data, 
     int total, int resolved, int pending, int inProgress, double rate
@@ -213,13 +201,11 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
       bldCounts[b] = (bldCounts[b] ?? 0) + 1; 
     }
 
-    // --- FIX: USE MULTIPAGE FOR PAGINATION ---
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32), // Cleaner margins
+        margin: const pw.EdgeInsets.all(32),
         
-        // --- HEADER (Appears on first page, or every page if repeated) ---
         header: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -235,7 +221,6 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
               pw.Divider(thickness: 1, color: PdfColors.grey300),
               pw.SizedBox(height: 10),
               
-              // --- FIX: CLEAR FILTER LABELS ---
               pw.Container(
                 padding: const pw.EdgeInsets.all(10),
                 decoration: pw.BoxDecoration(
@@ -259,10 +244,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
           );
         },
 
-        // --- BODY (Automatically flows to next page) ---
         build: (pw.Context context) => [
-          
-          // KPI Summary
           pw.Text("Performance Summary", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 10),
           pw.Table.fromTextArray(
@@ -283,7 +265,6 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
           
           pw.SizedBox(height: 30),
 
-          // Category Table
           pw.Text("Breakdown by Category", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 10),
           pw.Table.fromTextArray(
@@ -298,7 +279,6 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
 
           pw.SizedBox(height: 30),
 
-          // Property Table
           pw.Text("Breakdown by Property", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 10),
           pw.Table.fromTextArray(
@@ -311,7 +291,6 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
             cellPadding: const pw.EdgeInsets.all(8),
           ),
           
-          // Footer / End of Report
           pw.SizedBox(height: 40),
           pw.Divider(color: PdfColors.grey300),
           pw.Center(
@@ -326,59 +305,53 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
     );
   }
 
-  // --- HELPER WIDGETS ---
+  // --- UI WIDGETS ---
 
-  Widget _buildFilterChip({
+  // Cleaner Dropdown Chip
+  Widget _buildDropdownChip({
+    required IconData icon,
     required String label, 
     required String value,
     required List<String> items,
     required Function(String?) onChanged,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 10, 
-              fontWeight: FontWeight.bold, 
-              color: Colors.blueGrey,
-              letterSpacing: 0.5,
-            ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: items.contains(value) ? value : items.first,
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13, fontFamily: 'Poppins', fontWeight: FontWeight.w500)))).toList(),
+          onChanged: onChanged,
+          icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF003366)),
+          style: const TextStyle(color: Color(0xFF003366), fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 13),
+          isDense: true,
+          hint: Row(
+            children: [
+              Icon(icon, size: 14, color: Colors.grey),
+              const SizedBox(width: 6),
+              Text(label),
+            ],
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: items.contains(value) ? value : items.first,
-              items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
-              onChanged: onChanged,
-              icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.blueGrey),
-              style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
-              isDense: true,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
+  // Modern KPI Card
   Widget _buildKPICard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 5, offset: const Offset(0, 3))],
-        border: Border.all(color: color.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border(left: BorderSide(color: color, width: 4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,24 +359,40 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w600)),
-              Icon(icon, color: color, size: 20),
+              Icon(icon, color: color.withOpacity(0.8), size: 24),
+              Text(title, style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins')),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 12),
+          Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black87, fontFamily: 'Poppins')),
         ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Row(
-      children: [
-        Container(width: 4, height: 18, color: Colors.blue[800]),
-        const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-      ],
+  // Chart Container Wrapper
+  Widget _buildChartSection({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(width: 4, height: 18, decoration: BoxDecoration(color: const Color(0xFF003366), borderRadius: BorderRadius.circular(2))),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Color(0xFF003366))),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
     );
   }
 
@@ -423,35 +412,30 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
         int count = counts[key]!;
         double pct = count / max;
         
-        return InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text("$key: $count issues found"),
-              duration: const Duration(seconds: 1),
-            ));
-          },
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                SizedBox(width: 90, child: Text(key, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey))),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Container(height: 10, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(5))),
-                      FractionallySizedBox(
-                        widthFactor: pct,
-                        child: Container(
-                          height: 10,
-                          decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(5)),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              SizedBox(width: 90, child: Text(key, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700], fontFamily: 'Poppins'))),
+              Expanded(
+                child: Stack(
+                  children: [
+                    Container(height: 12, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(6))),
+                    FractionallySizedBox(
+                      widthFactor: pct,
+                      child: Container(
+                        height: 12,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [Colors.blue.shade400, Colors.blue.shade700]),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 30, child: Text("$count", textAlign: TextAlign.end, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-              ],
-            ),
+              ),
+              SizedBox(width: 40, child: Text("$count", textAlign: TextAlign.end, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Poppins'))),
+            ],
           ),
         );
       }).toList(),
@@ -475,39 +459,31 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
         int count = counts[key]!;
         double pct = count / max;
 
-        return InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text("$key has $count issues"),
-              duration: const Duration(seconds: 1),
-            ));
-          },
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                    Text("$count issues", style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: pct,
-                    minHeight: 6,
-                    backgroundColor: Colors.grey[100],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      count > 5 ? Colors.redAccent : Colors.orangeAccent,
-                    ),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Poppins')),
+                  Text("$count issues", style: TextStyle(fontSize: 12, color: Colors.grey[600], fontFamily: 'Poppins')),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: pct,
+                  minHeight: 8,
+                  backgroundColor: Colors.grey[100],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    count > 5 ? Colors.redAccent : Colors.orangeAccent,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       }).toList(),

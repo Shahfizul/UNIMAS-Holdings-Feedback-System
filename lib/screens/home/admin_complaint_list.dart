@@ -6,7 +6,7 @@ import '../../services/complaint_service.dart';
 import '../complaint/complaint_detail_screen.dart';
 
 class AdminComplaintList extends StatefulWidget {
-  final String filterType; 
+  final String filterType; // 'pending', 'in_progress', 'verify', 'history'
   const AdminComplaintList({super.key, required this.filterType});
 
   @override
@@ -14,109 +14,289 @@ class AdminComplaintList extends StatefulWidget {
 }
 
 class _AdminComplaintListState extends State<AdminComplaintList> {
+  // --- STATE VARIABLES ---
+  String _sortBy = 'Latest'; 
+  String _priorityFilter = 'All'; 
   String _selectedBuilding = 'All';
   String _selectedCategory = 'All';
 
-  // Categories matching report_screen.dart
   final List<String> _standardCategories = [
-    'Furniture', 
-    'Mechanical', 
-    'Electrical', 
-    'Plumbing/Sink', 
-    'Waste Water', 
-    'Wi-Fi',
+    'Furniture', 'Mechanical', 'Electrical', 'Plumbing/Sink', 'Waste Water', 'Wi-Fi'
   ];
+
+  // --- UNIFIED FILTER MODAL ---
+  void _showFilterModal(List<String> buildings, List<String> categories) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true, // Allows the sheet to be taller
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setModalState) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            height: MediaQuery.of(context).size.height * 0.85, // Use 85% of screen height
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Filter & Sort", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 18)),
+                    TextButton(
+                      onPressed: () {
+                        // Reset Logic
+                        setState(() {
+                          _sortBy = 'Latest';
+                          _priorityFilter = 'All';
+                          _selectedBuilding = 'All';
+                          _selectedCategory = 'All';
+                        });
+                        setModalState(() {});
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Reset All", style: TextStyle(color: Colors.red)),
+                    )
+                  ],
+                ),
+                const Divider(),
+                
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. DATE ORDER
+                        _buildFilterSectionHeader("Sort Order"),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            _buildModalChip("Latest First", _sortBy == 'Latest', () => setModalState(() => setState(() => _sortBy = 'Latest'))),
+                            _buildModalChip("Oldest First", _sortBy == 'Oldest', () => setModalState(() => setState(() => _sortBy = 'Oldest'))),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 2. PRIORITY
+                        _buildFilterSectionHeader("Priority Level"),
+                        Wrap(
+                          spacing: 8,
+                          children: ["All", "High", "Medium", "Low"].map((p) {
+                            return _buildModalChip(p, _priorityFilter == p, () => setModalState(() => setState(() => _priorityFilter = p)));
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 3. PROPERTY (Now inside modal)
+                        _buildFilterSectionHeader("Property / Building"),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: buildings.map((b) {
+                            return _buildModalChip(b, _selectedBuilding == b, () => setModalState(() => setState(() => _selectedBuilding = b)));
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 4. CATEGORY (Now inside modal)
+                        _buildFilterSectionHeader("Category"),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: categories.map((c) {
+                            return _buildModalChip(c, _selectedCategory == c, () => setModalState(() => setState(() => _selectedCategory = c)));
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 40), // Bottom padding
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Apply Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF003366),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Apply Filters", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  // Helper for Modal Chips
+  Widget _buildModalChip(String label, bool isSelected, VoidCallback onTap) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: const Color(0xFF003366).withOpacity(0.1),
+      backgroundColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? const Color(0xFF003366) : Colors.black87,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        fontSize: 13,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: isSelected ? const Color(0xFF003366) : Colors.grey.shade300),
+      ),
+      onSelected: (_) => onTap(),
+    );
+  }
+
+  Widget _buildFilterSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+    );
+  }
+
+  Color _getPriorityColor(String priority) {
+    if (priority == 'High') return Colors.red;
+    if (priority == 'Medium') return Colors.orange;
+    if (priority == 'Low') return Colors.green;
+    return const Color(0xFF003366);
+  }
 
   @override
   Widget build(BuildContext context) {
     final allComplaints = Provider.of<List<ComplaintModel>>(context);
 
-    // 1. FILTER LOGIC
+    // --- 1. FILTER LOGIC ---
     List<ComplaintModel> filteredList = allComplaints.where((job) {
-      // A. Tab Filter
+      // Tab Logic
       bool tabMatch = false;
-      if (widget.filterType == 'active') {
-        tabMatch = job.status == 'Pending' || job.status == 'In Progress';
-      } else if (widget.filterType == 'verify') {
-        tabMatch = job.status == 'Pending Verification';
-      } else {
-        tabMatch = job.status == 'Resolved' || job.status == 'Invalid';
-      }
+      if (widget.filterType == 'pending') tabMatch = job.status == 'Pending';
+      else if (widget.filterType == 'in_progress') tabMatch = job.status == 'In Progress';
+      else if (widget.filterType == 'verify') tabMatch = job.status == 'Pending Verification';
+      else tabMatch = job.status == 'Resolved' || job.status == 'Invalid';
 
-      // B. Building Filter
+      // Dropdown Logic
       bool buildingMatch = _selectedBuilding == 'All' || job.building == _selectedBuilding;
-
-      // C. Category Filter
+      
       bool categoryMatch = false;
-      if (_selectedCategory == 'All') {
-        categoryMatch = true;
-      } else if (_selectedCategory == 'Other') {
-        categoryMatch = !_standardCategories.contains(job.category);
-      } else {
-        categoryMatch = job.category == _selectedCategory;
-      }
+      if (_selectedCategory == 'All') categoryMatch = true;
+      else if (_selectedCategory == 'Other') categoryMatch = !_standardCategories.contains(job.category);
+      else categoryMatch = job.category == _selectedCategory;
 
-      return tabMatch && buildingMatch && categoryMatch;
+      bool priorityMatch = _priorityFilter == 'All' || job.priority == _priorityFilter;
+
+      return tabMatch && buildingMatch && categoryMatch && priorityMatch;
     }).toList();
 
-    // 2. SORTING (Newest First)
-    filteredList.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    // Sort Logic
+    filteredList.sort((a, b) => _sortBy == 'Latest' 
+      ? b.timestamp.compareTo(a.timestamp) 
+      : a.timestamp.compareTo(b.timestamp));
 
-    // 3. DROPDOWN LISTS
+    // Dynamic Lists for Modal
     final List<String> buildings = ['All'];
     buildings.addAll(allComplaints.map((e) => e.building ?? 'Unknown').whereType<String>().toSet());
-
     final List<String> categories = ['All', ..._standardCategories, 'Other'];
 
+    // Check if any filter is active
+    bool isFiltered = _priorityFilter != 'All' || _selectedBuilding != 'All' || _selectedCategory != 'All';
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- FILTER BAR ---
+        // --- TOP CONTROLS ---
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2)),
-            ],
-          ),
-          child: Row(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _buildDropdown(
-                  label: "Property",
-                  value: _selectedBuilding,
-                  items: buildings,
-                  onChanged: (val) => setState(() => _selectedBuilding = val!),
-                  icon: Icons.business,
-                ),
+              Row(
+                children: [
+                  // THE MAIN FILTER BUTTON
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _showFilterModal(buildings, categories),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.tune, size: 18, color: const Color(0xFF003366)),
+                            const SizedBox(width: 8),
+                            const Text("Filters & Sort", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            const Spacer(),
+                            if (isFiltered) 
+                              Container(
+                                width: 8, height: 8,
+                                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                              ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    "${filteredList.length} tasks", 
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
+                  ),
+                ],
               ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: _buildDropdown(
-                  label: "Category",
-                  value: _selectedCategory,
-                  items: categories,
-                  onChanged: (val) => setState(() => _selectedCategory = val!),
-                  icon: Icons.category,
+              
+              // --- ACTIVE FILTER CHIPS (Visual Feedback) ---
+              if (isFiltered) ...[
+                const SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      if (_priorityFilter != 'All')
+                        _buildActiveFilterChip("Priority: $_priorityFilter", () => setState(() => _priorityFilter = 'All')),
+                      
+                      if (_selectedBuilding != 'All')
+                        _buildActiveFilterChip("Prop: $_selectedBuilding", () => setState(() => _selectedBuilding = 'All')),
+                      
+                      if (_selectedCategory != 'All')
+                        _buildActiveFilterChip("Cat: $_selectedCategory", () => setState(() => _selectedCategory = 'All')),
+                        
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _priorityFilter = 'All';
+                            _selectedBuilding = 'All';
+                            _selectedCategory = 'All';
+                          });
+                        }, 
+                        child: const Text("Clear All", style: TextStyle(fontSize: 11, color: Colors.red))
+                      )
+                    ],
+                  ),
                 ),
-              ),
+              ]
             ],
           ),
         ),
+        
+        const Divider(height: 1),
 
         // --- LIST VIEW ---
         Expanded(
           child: filteredList.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.assignment_turned_in_outlined, size: 60, color: Colors.grey[300]),
-                      const SizedBox(height: 10),
-                      Text("No tasks found", style: TextStyle(color: Colors.grey[500], fontSize: 16)),
-                    ],
-                  ),
-                )
+              ? _buildEmptyState()
               : ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: filteredList.length,
@@ -129,206 +309,168 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
     );
   }
 
-  Widget _buildDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required Function(String?) onChanged,
-    required IconData icon,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-        const SizedBox(height: 4),
-        Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: items.contains(value) ? value : 'All',
-              icon: Icon(Icons.arrow_drop_down, color: Colors.blue[800]),
-              style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w600),
-              selectedItemBuilder: (BuildContext context) {
-                return items.map<Widget>((String item) {
-                  return Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(item, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  );
-                }).toList();
-              },
-              items: items.map<DropdownMenuItem<String>>((String val) {
-                return DropdownMenuItem<String>(
-                  value: val,
-                  child: Text(val, overflow: TextOverflow.ellipsis),
-                );
-              }).toList(),
-              onChanged: onChanged,
-            ),
-          ),
-        ),
-      ],
+  Widget _buildActiveFilterChip(String label, VoidCallback onRemove) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF003366).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF003366).withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF003366), fontWeight: FontWeight.w600)),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: onRemove,
+            child: const Icon(Icons.close, size: 14, color: Color(0xFF003366)),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    String message = "No tasks found";
+    IconData icon = Icons.assignment_turned_in_outlined;
+
+    if (widget.filterType == 'pending') {
+      message = "All clear! No pending jobs.";
+      icon = Icons.check_circle_outline;
+    } else if (widget.filterType == 'in_progress') {
+      message = "No jobs currently in progress.";
+      icon = Icons.engineering_outlined;
+    }
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 60, color: Colors.grey[300]),
+          const SizedBox(height: 10),
+          Text(message, style: TextStyle(color: Colors.grey[500], fontFamily: 'Poppins')),
+        ],
+      ),
     );
   }
 
   Widget _buildAdminCard(BuildContext context, ComplaintModel job) {
-    // 1. Status Colors
     Color statusColor = Colors.grey;
-    if (job.status == 'Pending') statusColor = Colors.orange;
-    else if (job.status == 'In Progress') statusColor = Colors.blue;
-    else if (job.status == 'Pending Verification') statusColor = Colors.purple;
-    else if (job.status == 'Resolved') statusColor = Colors.green;
-    else if (job.status == 'Invalid') statusColor = Colors.red;
+    IconData statusIcon = Icons.info;
 
-    // 2. Priority Colors (New)
-    Color priorityColor = Colors.grey;
-    if (job.priority == 'High') priorityColor = Colors.red;
-    else if (job.priority == 'Medium') priorityColor = Colors.orange;
-    else if (job.priority == 'Low') priorityColor = Colors.green;
+    switch (job.status) {
+      case 'Pending': statusColor = Colors.orange; statusIcon = Icons.hourglass_empty; break;
+      case 'In Progress': statusColor = Colors.blue; statusIcon = Icons.build; break;
+      case 'Pending Verification': statusColor = Colors.purple; statusIcon = Icons.fact_check; break;
+      case 'Resolved': statusColor = Colors.green; statusIcon = Icons.check_circle; break;
+      case 'Invalid': statusColor = Colors.red; statusIcon = Icons.cancel; break;
+    }
 
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: statusColor, width: 5)),
-        ),
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ComplaintDetailScreen(complaint: job)),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ROW 1: Title + Action
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        job.title, 
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        maxLines: 1, overflow: TextOverflow.ellipsis
-                      ),
-                    ),
-                    if (job.status == 'Pending')
-                      IconButton(
-                        constraints: const BoxConstraints(), 
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                        tooltip: "Reject",
-                        onPressed: () => _markAsInvalid(context, job),
-                      )
-                    else
-                      const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
-                  ],
-                ),
-                
-                const SizedBox(height: 8),
-                
-                // ROW 2: Priority Badge + Building Info
-                Row(
-                  children: [
-                    // --- PRIORITY BADGE ---
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: priorityColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: priorityColor.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (job.priority == 'High') 
-                            Padding(
-                              padding: const EdgeInsets.only(right: 4.0),
-                              child: Icon(Icons.warning_amber_rounded, size: 14, color: priorityColor),
-                            ),
-                          Text(
-                            job.priority.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 11, 
-                              fontWeight: FontWeight.bold, 
-                              color: priorityColor,
-                              letterSpacing: 0.5
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 8),
-
-                    // --- LOCATION BADGE ---
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(6),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: Colors.grey.shade200, width: 1)
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => ComplaintDetailScreen(complaint: job)));
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: statusColor.withOpacity(0.1),
+                    child: Icon(statusIcon, color: statusColor, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          job.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Poppins'),
+                          maxLines: 1, 
+                          overflow: TextOverflow.ellipsis
                         ),
-                        child: Text(
-                          "${job.building} • ${job.category}", 
-                          style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.w500),
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _getPriorityColor(job.priority).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                "${job.priority} Priority",
+                                style: TextStyle(fontSize: 10, color: _getPriorityColor(job.priority), fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.category_outlined, size: 14, color: Colors.grey[500]),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                job.category,
+                                style: TextStyle(fontSize: 12, color: Colors.grey[700], fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                // ROW 3: Status Text + Date
-                Row(
-                  children: [
-                    Text(
-                      job.status,
-                      style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    const Spacer(),
-                    Icon(Icons.access_time, size: 12, color: Colors.grey[500]),
-                    const SizedBox(width: 4),
-                    Text(
-                      DateFormat('dd MMM, hh:mm a').format(job.timestamp),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-
-                // Extra details for History Tab
-                if (job.status == 'Invalid') ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.red.shade100),
-                    ),
-                    child: Text(
-                      "Reason: ${job.adminRemarks ?? 'N/A'}",
-                      style: TextStyle(color: Colors.red[800], fontSize: 12, fontWeight: FontWeight.bold),
+                      ],
                     ),
                   ),
+                  const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
                 ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      "${job.building}, ${job.roomNumber}", 
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis
+                    )
+                  ),
+                  Text(
+                    DateFormat('dd MMM yyyy').format(job.timestamp),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+              if (job.status == 'Pending') ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    height: 28,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      onPressed: () => _markAsInvalid(context, job),
+                      child: const Text("Reject", style: TextStyle(color: Colors.red, fontSize: 11)),
+                    ),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -340,19 +482,17 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
-          children: [Icon(Icons.warning_amber_rounded, color: Colors.red), SizedBox(width: 10), Text("Reject Request?")],
-        ),
+        title: const Text("Reject Complaint"),
         content: TextField(
           autofocus: true,
-          decoration: const InputDecoration(labelText: "Reason", hintText: "e.g. Duplicate", border: OutlineInputBorder()),
+          decoration: const InputDecoration(labelText: "Reason", border: OutlineInputBorder()),
           onChanged: (val) => reason = val,
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text("Confirm Reject"),
+            child: const Text("Reject"),
             onPressed: () async {
               if (reason.isNotEmpty) {
                 await ComplaintService().markAsInvalid(job.id, reason);

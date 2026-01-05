@@ -120,7 +120,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final AuthService _auth = AuthService();
+    final AuthService auth = AuthService();
     final user = Provider.of<UserModel?>(context);
 
     if (user == null) {
@@ -133,60 +133,21 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
         List<ComplaintModel> allComplaints = snapshot.data ?? [];
 
         return DefaultTabController(
-          length: 3,
+          // --- 4 TABS (Split Pending & Active) ---
+          length: 4,
           child: Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: const Color(0xFFF5F7FA), // Light Grey Background
             appBar: AppBar(
               backgroundColor: Colors.white,
               elevation: 0.5,
               centerTitle: true,
+              
+              // --- 1. LEFT PADDING FIXED (8.0) ---
               leading: Padding(
                 padding: const EdgeInsets.only(left: 8.0),
-                child: PopupMenuButton<String>(
-                  offset: const Offset(0, 45),
-                  color: Colors.white,
-                  surfaceTintColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade200, width: 1),
-                  ),
-                  onSelected: (value) {
-                    if (value == 'logout') {
-                      _showLogoutDialog(context, _auth);
-                    } else if (value == 'profile') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ProfilePage()),
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'profile',
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.person_outline, size: 20),
-                        title: Text('My Profile', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'logout',
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.logout, color: Colors.red, size: 20),
-                        title: Text('Logout', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                  child: Center(
-                    child: CircleAvatar(
-                      radius: 15,
-                      backgroundColor: Colors.grey.shade200,
-                      child: const Icon(Icons.person, size: 20, color: Colors.grey),
-                    ),
-                  ),
-                ),
+                child: _buildProfileMenu(context, auth),
               ),
+              
               title: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -211,109 +172,45 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   ),
                 ],
               ),
+              
               actions: [
+                // --- 2. RIGHT PADDING FIXED (8.0) ---
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: NotificationBadge(userId: user.uid),
                 ),
               ],
+              
               bottom: const TabBar(
+                isScrollable: true,
                 labelColor: Color(0xFF003366),
                 unselectedLabelColor: Colors.grey,
                 indicatorColor: Color(0xFF003366),
                 indicatorWeight: 3,
                 labelStyle: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12),
                 tabs: [
-                  Tab(text: "Active Issues"),
-                  Tab(text: "History Log"),
+                  Tab(text: "Requested"), // Pending
+                  Tab(text: "Updates"),   // In Progress + Verification
+                  Tab(text: "History"),   // Resolved + Invalid
                   Tab(text: "My Ideas"),
                 ],
               ),
             ),
-            floatingActionButton: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 250),
-                  opacity: _isMenuOpen ? 1.0 : 0.0,
-                  child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 250),
-                    offset: _isMenuOpen ? Offset.zero : const Offset(0, 0.5),
-                    child: Visibility(
-                      visible: _isMenuOpen,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildFabLabel("Send Feedback"),
-                          const SizedBox(width: 8),
-                          FloatingActionButton(
-                            heroTag: "suggestionBtn",
-                            mini: true,
-                            backgroundColor: Colors.teal,
-                            onPressed: () {
-                              setState(() => _isMenuOpen = false);
-                              Navigator.push(context, MaterialPageRoute(builder: (context) => const SuggestionScreen()));
-                            },
-                            child: const Icon(Icons.lightbulb_outline, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: _isMenuOpen ? 1.0 : 0.0,
-                  child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 200),
-                    offset: _isMenuOpen ? Offset.zero : const Offset(0, 0.5),
-                    child: Visibility(
-                      visible: _isMenuOpen,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildFabLabel("Report Issue"),
-                          const SizedBox(width: 8),
-                          FloatingActionButton(
-                            heroTag: "reportBtn",
-                            mini: true,
-                            backgroundColor: const Color(0xFF003366),
-                            onPressed: () {
-                              setState(() => _isMenuOpen = false);
-                              Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportScreen()));
-                            },
-                            child: const Icon(Icons.add_a_photo_outlined, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FloatingActionButton(
-                  heroTag: "mainFab",
-                  backgroundColor: _isMenuOpen ? Colors.grey[300] : const Color.fromARGB(255, 24, 109, 149),
-                  onPressed: () => setState(() => _isMenuOpen = !_isMenuOpen),
-                  child: AnimatedRotation(
-                    duration: const Duration(milliseconds: 300),
-                    turns: _isMenuOpen ? 0.375 : 0,
-                    child: Icon(
-                      Icons.add, 
-                      color: _isMenuOpen ? Colors.black87 : Colors.white, 
-                      size: 28
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            floatingActionButton: _buildExpandableFab(context),
             body: Stack(
               children: [
                 TabBarView(
                   children: [
-                    ResidentComplaintList(allComplaints: allComplaints, isHistory: false),
-                    ResidentComplaintList(allComplaints: allComplaints, isHistory: true),
+                    // Tab 1: Pending (Requested)
+                    ResidentComplaintList(allComplaints: allComplaints, filterType: 'pending'),
+                    
+                    // Tab 2: Updates (In Progress + Verification)
+                    ResidentComplaintList(allComplaints: allComplaints, filterType: 'active'),
+                    
+                    // Tab 3: History (Resolved + Invalid)
+                    ResidentComplaintList(allComplaints: allComplaints, filterType: 'history'),
+                    
+                    // Tab 4: Suggestions (UPDATED UI)
                     ResidentSuggestionList(userUid: user.uid),
                   ],
                 ),
@@ -323,9 +220,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                 if (_isMenuOpen)
                   GestureDetector(
                     onTap: () => setState(() => _isMenuOpen = false),
-                    child: Container(
-                      color: Colors.black.withOpacity(0.1),
-                    ),
+                    child: Container(color: Colors.black.withOpacity(0.1)),
                   ),
               ],
             ),
@@ -334,9 +229,130 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       },
     );
   }
+
+  // --- WIDGET BREAKDOWNS ---
+
+  Widget _buildProfileMenu(BuildContext context, AuthService auth) {
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 45),
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
+      onSelected: (value) {
+        if (value == 'logout') {
+          _showLogoutDialog(context, auth);
+        } else if (value == 'profile') {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'profile',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.person_outline, size: 20),
+            title: Text('My Profile', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'logout',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.logout, color: Colors.red, size: 20),
+            title: Text('Logout', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
+      // --- 3. RESTORED ORIGINAL GREY ICON ---
+      child: Center(
+        child: CircleAvatar(
+          radius: 15,
+          backgroundColor: Colors.grey.shade200,
+          child: const Icon(Icons.person, size: 20, color: Colors.grey),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableFab(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 250),
+          opacity: _isMenuOpen ? 1.0 : 0.0,
+          child: Visibility(
+            visible: _isMenuOpen,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildFabLabel("Send Feedback"),
+                const SizedBox(width: 8),
+                FloatingActionButton(
+                  heroTag: "suggestionBtn",
+                  mini: true,
+                  backgroundColor: Colors.teal,
+                  onPressed: () {
+                    setState(() => _isMenuOpen = false);
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SuggestionScreen()));
+                  },
+                  child: const Icon(Icons.lightbulb_outline, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: _isMenuOpen ? 1.0 : 0.0,
+          child: Visibility(
+            visible: _isMenuOpen,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildFabLabel("Report Issue"),
+                const SizedBox(width: 8),
+                FloatingActionButton(
+                  heroTag: "reportBtn",
+                  mini: true,
+                  backgroundColor: const Color(0xFF003366),
+                  onPressed: () {
+                    setState(() => _isMenuOpen = false);
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportScreen()));
+                  },
+                  child: const Icon(Icons.add_a_photo_outlined, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        FloatingActionButton(
+          heroTag: "mainFab",
+          backgroundColor: _isMenuOpen ? Colors.grey[300] : const Color.fromARGB(255, 24, 109, 149),
+          onPressed: () => setState(() => _isMenuOpen = !_isMenuOpen),
+          child: AnimatedRotation(
+            duration: const Duration(milliseconds: 300),
+            turns: _isMenuOpen ? 0.375 : 0,
+            child: Icon(
+              Icons.add, 
+              color: _isMenuOpen ? Colors.black87 : Colors.white, 
+              size: 28
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-// --- UPDATED SUGGESTION LIST WITH FILTER ---
+// --- RESIDENT SUGGESTION LIST (ENHANCED UI) ---
 class ResidentSuggestionList extends StatefulWidget {
   final String userUid;
   const ResidentSuggestionList({super.key, required this.userUid});
@@ -347,6 +363,28 @@ class ResidentSuggestionList extends StatefulWidget {
 
 class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
   String _sortBy = 'Latest';
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Safety & Security': return Colors.red;
+      case 'IT & Wi-Fi': return Colors.blue;
+      case 'Facility Improvement': return Colors.orange;
+      case 'Cleanliness': return Colors.green;
+      case 'Event Idea': return Colors.purple;
+      default: return Colors.grey;
+    }
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'Safety & Security': return Icons.security;
+      case 'IT & Wi-Fi': return Icons.wifi;
+      case 'Facility Improvement': return Icons.build;
+      case 'Cleanliness': return Icons.cleaning_services;
+      case 'Event Idea': return Icons.event;
+      default: return Icons.lightbulb_outline;
+    }
+  }
 
   void _showSortOptions() {
     showModalBottomSheet(
@@ -393,48 +431,30 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
 
           return Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 16, top: 12),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: ActionChip(
-                    avatar: const Icon(Icons.sort, size: 16, color: Colors.teal),
-                    label: Text(_sortBy, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.teal)),
-                    backgroundColor: Colors.white,
-                    
-                    onPressed: _showSortOptions,
-                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.white,
+                child: Row(
+                  children: [
+                    ActionChip(
+                      avatar: const Icon(Icons.sort, size: 16, color: Colors.teal),
+                      label: Text("Sort: $_sortBy", style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.teal)),
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      onPressed: _showSortOptions,
+                    ),
+                  ],
                 ),
               ),
+              const Divider(height: 1),
               Expanded(
                 child: displayList.isEmpty 
                   ? const Center(child: Text("No suggestions yet.", style: TextStyle(color: Colors.grey)))
                   : ListView.builder(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       itemCount: displayList.length,
                       itemBuilder: (context, index) {
-                        final item = displayList[index];
-                        return Card(
-                          elevation: 2,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          color: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(color: Colors.grey.shade200, width: 1)),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.teal.withOpacity(0.1),
-                              child: const Icon(Icons.lightbulb, color: Colors.teal),
-                            ),
-                            title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(
-                              "${item.category} • ${DateFormat('dd MMM').format(item.timestamp)}",
-                              style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                            ),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => SuggestionDetailScreen(suggestion: item))),
-                          ),
-                        );
+                        return _buildSuggestionCard(context, displayList[index]);
                       },
                     ),
               ),
@@ -444,14 +464,115 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
       ),
     );
   }
+
+  Widget _buildSuggestionCard(BuildContext context, SuggestionModel item) {
+    final catColor = _getCategoryColor(item.category);
+    final catIcon = _getCategoryIcon(item.category);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => SuggestionDetailScreen(suggestion: item))),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Icon Box
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: catColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(catIcon, color: catColor, size: 22),
+                    ),
+                    const SizedBox(width: 16),
+                    
+                    // Text Content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              // Category Text
+                              Text(
+                                item.category.toUpperCase(),
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[500], letterSpacing: 0.5),
+                              ),
+                              const Spacer(),
+                              // Date
+                              Text(
+                                DateFormat('dd MMM').format(item.timestamp),
+                                style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          
+                          // Title
+                          Text(
+                            item.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              fontFamily: 'Poppins',
+                              color: Colors.black87,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Arrow
+                    const SizedBox(width: 12),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                  ],
+                ),
+                
+                // Preview Text (Optional)
+                if (item.description.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  Text(
+                    item.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13, height: 1.4),
+                  ),
+                ]
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-// --- UPDATED COMPLAINT LIST WITH FILTERS ---
+// --- RESIDENT COMPLAINT LIST ---
 class ResidentComplaintList extends StatefulWidget {
   final List<ComplaintModel> allComplaints;
-  final bool isHistory;
+  final String filterType; // 'pending', 'active', 'history'
 
-  const ResidentComplaintList({super.key, required this.allComplaints, required this.isHistory});
+  const ResidentComplaintList({super.key, required this.allComplaints, required this.filterType});
 
   @override
   State<ResidentComplaintList> createState() => _ResidentComplaintListState();
@@ -460,6 +581,23 @@ class ResidentComplaintList extends StatefulWidget {
 class _ResidentComplaintListState extends State<ResidentComplaintList> {
   String _sortBy = 'Latest';
   String _priorityFilter = 'All';
+
+  // --- COLOR HELPERS ---
+  Color _getStatusColor(String status) {
+    if (status == 'Pending') return Colors.orange;
+    if (status == 'In Progress') return Colors.blue;
+    if (status == 'Pending Verification') return Colors.purple;
+    if (status == 'Resolved') return Colors.green;
+    if (status == 'Invalid') return Colors.red;
+    return Colors.grey;
+  }
+
+  Color _getPriorityColor(String priority) {
+    if (priority == 'High') return Colors.red;
+    if (priority == 'Medium') return Colors.orange;
+    if (priority == 'Low') return Colors.green;
+    return Colors.grey;
+  }
 
   void _showFilterOptions() {
     showModalBottomSheet(
@@ -475,7 +613,8 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
               children: [
                 const Text("Sort & Filter", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16)),
                 const Divider(),
-                const Text("Date Order", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const Text("Date Order", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     ChoiceChip(
@@ -491,8 +630,9 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                const Text("Priority Level", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 20),
+                const Text("Priority Level", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: ["All", "Low", "Medium", "High"].map((p) => ChoiceChip(
@@ -512,12 +652,15 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Filter by History status
+    // 1. Filter by Tab Logic
     List<ComplaintModel> filteredList = widget.allComplaints.where((job) {
-      if (widget.isHistory) {
-        return job.status == 'Resolved' || job.status == 'Pending Verification' || job.status == 'Invalid';
+      if (widget.filterType == 'pending') {
+        return job.status == 'Pending';
+      } else if (widget.filterType == 'active') {
+        return job.status == 'In Progress' || job.status == 'Pending Verification';
       } else {
-        return job.status == 'Pending' || job.status == 'In Progress';
+        // history
+        return job.status == 'Resolved' || job.status == 'Invalid';
       }
     }).toList();
 
@@ -526,32 +669,43 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
       filteredList = filteredList.where((job) => job.priority == _priorityFilter).toList();
     }
 
-    // 3. Sort by Date
+    // 3. Sort
     filteredList.sort((a, b) => _sortBy == 'Latest' 
       ? b.timestamp.compareTo(a.timestamp) 
       : a.timestamp.compareTo(b.timestamp));
 
     return Column(
       children: [
-        Padding(
+        // --- FILTER BAR ---
+        Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Colors.white,
           child: Row(
             children: [
               ActionChip(
-                avatar: const Icon(Icons.filter_list, size: 16, color: Color(0xFF003366)),
-                label: Text("Filters: $_sortBy • $_priorityFilter", 
-                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF003366))),
+                avatar: const Icon(Icons.tune, size: 16, color: Color(0xFF003366)),
+                label: Text("Sort & Priority ($_priorityFilter)", style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF003366))),
                 backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 onPressed: _showFilterOptions,
+              ),
+              const Spacer(),
+              Text(
+                "${filteredList.length} items", 
+                style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
               ),
             ],
           ),
         ),
+        
+        const Divider(height: 1),
+
+        // --- LIST ---
         Expanded(
           child: filteredList.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.all(16),
                   itemCount: filteredList.length,
                   itemBuilder: (context, index) => _buildJobCard(context, filteredList[index]),
                 ),
@@ -561,54 +715,164 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
   }
 
   Widget _buildEmptyState() {
+    String message = "No items found.";
+    IconData icon = Icons.history_edu;
+
+    if (widget.filterType == 'pending') {
+      message = "No pending requests.";
+      icon = Icons.send_and_archive;
+    } else if (widget.filterType == 'active') {
+      message = "No active work in progress.";
+      icon = Icons.build_circle_outlined;
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(widget.isHistory ? Icons.history : Icons.check_circle_outline, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 10),
-          Text(widget.isHistory ? "No past history." : "No active complaints.", 
-            style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+          Icon(icon, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text(message, style: TextStyle(color: Colors.grey[500], fontSize: 16, fontFamily: 'Poppins')),
         ],
       ),
     );
   }
 
   Widget _buildJobCard(BuildContext context, ComplaintModel job) {
-    Color statusColor = Colors.grey;
-    IconData statusIcon = Icons.info;
+    Color statusColor = _getStatusColor(job.status);
+    Color priorityColor = _getPriorityColor(job.priority);
 
-    switch (job.status) {
-      case 'Pending': statusColor = Colors.orange; statusIcon = Icons.hourglass_empty; break;
-      case 'In Progress': statusColor = Colors.blue; statusIcon = Icons.build; break;
-      case 'Pending Verification': statusColor = Colors.purple; statusIcon = Icons.fact_check; break;
-      case 'Resolved': statusColor = Colors.green; statusIcon = Icons.check_circle; break;
-      case 'Invalid': statusColor = Colors.red; statusIcon = Icons.cancel; break;
-    }
+    // Icon logic
+    IconData statusIcon = Icons.info;
+    if (job.status == 'In Progress') statusIcon = Icons.build_circle;
+    else if (job.status == 'Pending') statusIcon = Icons.hourglass_empty;
+    else if (job.status == 'Resolved') statusIcon = Icons.check_circle;
+    else if (job.status == 'Pending Verification') statusIcon = Icons.fact_check;
+    else if (job.status == 'Invalid') statusIcon = Icons.cancel;
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10),
-      side: BorderSide(color: Colors.grey.shade200, width: 1)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        leading: CircleAvatar(backgroundColor: statusColor.withOpacity(0.1), child: Icon(statusIcon, color: statusColor)),
-        title: Text(job.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 5),
-            Text("${job.category} • ${job.priority} Priority"),
-            const SizedBox(height: 5),
-            if (job.status == 'Invalid')
-              Text("Rejected: ${job.adminRemarks ?? 'No reason given'}", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            Text(DateFormat('dd MMM yyyy, hh:mm a').format(job.timestamp), style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 109, 109, 109))),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ResidentComplaintDetail(job: job))),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Row 1: Status + Menu
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(statusIcon, size: 14, color: statusColor),
+                        const SizedBox(width: 6),
+                        Text(job.status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Row 2: Title
+              Text(
+                job.title, 
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Poppins'),
+                maxLines: 1, 
+                overflow: TextOverflow.ellipsis
+              ),
+              const SizedBox(height: 8),
+
+              // Row 3: Priority & Category
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: priorityColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: priorityColor.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      "${job.priority} Priority", 
+                      style: TextStyle(color: priorityColor, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.category, size: 10, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          job.category, 
+                          style: TextStyle(color: Colors.grey[700], fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+              
+              // Rejected Message Highlight
+              if (job.status == 'Invalid') ...[
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(6)),
+                  child: Text(
+                    "Reason: ${job.adminRemarks ?? 'No reason given'}",
+                    style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+
+              // Row 4: Location & Date
+              Row(
+                children: [
+                  Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      "${job.building}, ${job.roomNumber}",
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    DateFormat('dd MMM yyyy').format(job.timestamp),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
       value: AuthService().user,
       initialData: null,
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         title: 'Suggestify',
         theme: ThemeData(
           primarySwatch: Colors.blue,

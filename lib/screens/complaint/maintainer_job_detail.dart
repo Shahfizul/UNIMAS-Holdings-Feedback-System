@@ -15,6 +15,24 @@ class MaintainerJobDetail extends StatefulWidget {
 }
 
 class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
+  
+  // --- COLOR RULES ---
+  Color _getPriorityColor(String priority) {
+    if (priority == 'High') return Colors.red;
+    if (priority == 'Medium') return Colors.orange; 
+    if (priority == 'Low') return Colors.green;
+    return Colors.grey;
+  }
+
+  Color _getStatusColor(String status) {
+    if (status == 'Pending') return Colors.orange; // Though Maintainer won't see "Pending" usually
+    if (status == 'In Progress') return Colors.blue;
+    if (status == 'Pending Verification') return Colors.purple;
+    if (status == 'Resolved') return Colors.green;
+    if (status == 'Invalid') return Colors.red;
+    return Colors.grey;
+  }
+
   // --- OPENS FULL SCREEN GALLERY ---
   void _openGallery(BuildContext context, List<String> urls, int initialIndex) {
     Navigator.push(
@@ -57,17 +75,12 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
         if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
         
         var data = snapshot.data!.data() as Map<String, dynamic>;
-        // We use 'job' as the local variable to match your request
         ComplaintModel job = ComplaintModel.fromMap(data, widget.job.id);
 
-        Color statusColor = Colors.grey;
-        if (job.status == 'In Progress') statusColor = Colors.orange;
-        if (job.status == 'Resolved') statusColor = Colors.green;
-        if (job.status == 'Pending Verification') statusColor = Colors.blue;
-        if (job.status == 'Invalid') statusColor = Colors.red;
+        Color statusColor = _getStatusColor(job.status);
 
         return Scaffold(
-          backgroundColor: const Color(0xFFFAFAFA),
+          backgroundColor: const Color(0xFFF5F7FA), // Light Grey Background
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 0.5,
@@ -82,62 +95,52 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
             ),
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // --- SECTION 1: STATUS HEADER ---
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    border: Border.all(color: statusColor),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
                   ),
                   child: Column(
                     children: [
-                      Text("Current Job Status", style: TextStyle(color: Colors.grey[600], fontSize: 12, fontFamily: 'Poppins')),
+                      Text("CURRENT STATUS", style: TextStyle(color: Colors.grey[600], fontSize: 11, fontFamily: 'Poppins', letterSpacing: 1.2, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 5),
                       Text(job.status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                     ],
                   ),
                 ),
 
-                if (job.adminRemarks != null && job.adminRemarks!.isNotEmpty && job.status == 'In Progress') ...[
+                // Show Admin Remarks if rejected/re-opened
+                if (job.adminRemarks != null && job.adminRemarks!.isNotEmpty && (job.status == 'In Progress' || job.status == 'Invalid')) ...[
                   const SizedBox(height: 20),
-                  _buildRejectionBox("Admin Reason for Re-opening", job.adminRemarks!),
+                  _buildRejectionBox(
+                    job.status == 'Invalid' ? "Job Rejected by Admin" : "Re-opened by Admin", 
+                    job.adminRemarks!
+                  ),
                 ],
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
-                // --- SECTION 2: PREMISE & CONTACT ---
-                _buildSectionTitle("Location & Contact"),
-                _buildInfoContainer([
-                  _detailRow("Building", job.building),
-                  _detailRow("Room Number", job.roomNumber),
-                  _detailRow("Resident", job.fullName),
-                  _detailRow("Phone No.", job.contactNumber),
-                  _detailRow(
-                    "Date Reported",
-                    DateFormat(
-                      'dd MMM yyyy, hh:mm a',
-                    ).format(job.timestamp),
-                  ),
-                ]),
-
-                const SizedBox(height: 32),
-
-                // --- SECTION 3: ISSUE DESCRIPTION (Fixed Alignment) ---
-                _buildSectionTitle("Issue Description"),
+                // --- SECTION 2: ISSUE DETAILS ---
+                _buildSectionTitle("Issue Information"),
                 _buildInfoContainer([
                   _detailRow("Job Title", job.title),
+                  
+                  // Pills Row (Priority & Category)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        _buildPill(job.priority, job.priority == 'High' ? Colors.red : Colors.orange),
+                        _buildPill(job.priority, _getPriorityColor(job.priority)),
                         const SizedBox(width: 8),
                         _buildPill(job.category, Colors.blueGrey),
                       ],
@@ -145,46 +148,51 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                   ),
                   const Divider(height: 1, color: Colors.grey),
                   const SizedBox(height: 12),
-                  // This Column fixes the centering issue
+                  
+                  // Description
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "Description",
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 14,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontFamily: 'Poppins', fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         job.description,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          fontFamily: 'Poppins',
-                          color: Colors.black,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14, fontFamily: 'Poppins', color: Colors.black87, height: 1.4),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                 ]),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+
+                // --- SECTION 3: LOCATION & CONTACT ---
+                _buildSectionTitle("Location & Resident"),
+                _buildInfoContainer([
+                  _detailRow("Building", job.building),
+                  _detailRow("Room Number", job.roomNumber),
+                  const Divider(),
+                  _detailRow("Resident Name", job.fullName),
+                  _detailRow("Phone Contact", job.contactNumber),
+                  _detailRow("Date Reported", DateFormat('dd MMM yyyy, hh:mm a').format(job.timestamp)),
+                ]),
+
+                const SizedBox(height: 24),
 
                 // --- SECTION 4: EVIDENCE ---
                 if (job.imageUrls.isNotEmpty || (job.videoUrl != null && job.videoUrl!.isNotEmpty)) ...[
                   _buildSectionTitle("Evidence Attached"),
                   _buildEvidenceContainer(job),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                 ],
 
-                // --- SECTION 5: MAINTAINER ACTION ---
+                // --- SECTION 5: ACTIONS / REPORT ---
                 if (job.status == 'In Progress') ...[
-                  _buildSectionTitle("Maintenance Action"),
+                  // ACTION BUTTON
+                  _buildSectionTitle("Action Required"),
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -192,25 +200,47 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                       icon: const Icon(Icons.check_circle_outline, color: Colors.white),
                       label: const Text("SUBMIT COMPLETION REPORT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: const Color.fromARGB(255, 21, 192, 41),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
+                        elevation: 4,
                       ),
                       onPressed: () => _showCompletionDialog(job),
                     ),
                   ),
-                ] else ...[
-                   _buildSectionTitle("Work Completion Report"),
-                   _buildInfoContainer([
-                      _detailRow("Findings", job.findings),
-                      _detailRow("Action Taken", job.actionTaken),
-                      _detailRow("Inspection", job.inspectionResult),
-                   ]),
+                ] else if (job.status == 'Pending Verification' || job.status == 'Resolved') ...[
+                  // COMPLETED REPORT VIEW
+                  _buildSectionTitle("Work Completion Report"),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.green.withOpacity(0.5)),
+                      boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.05), blurRadius: 10)],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.assignment_turned_in, color: Colors.green),
+                            SizedBox(width: 8),
+                            Text("Job Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green)),
+                          ],
+                        ),
+                        const Divider(height: 20),
+                        _detailRow("Findings", job.findings.isNotEmpty ? job.findings : "N/A"),
+                        _detailRow("Action Taken", job.actionTaken.isNotEmpty ? job.actionTaken : "N/A"),
+                        _detailRow("Result", job.inspectionResult.isNotEmpty ? job.inspectionResult : "N/A"),
+                      ],
+                    ),
+                  ),
                 ],
 
                 // --- SECTION 6: RESIDENT FEEDBACK ---
                 if (job.rating > 0) ...[
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   _buildSectionTitle("Resident Feedback"),
                   _buildFeedbackBox(job),
                 ],
@@ -238,9 +268,9 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 8))],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
@@ -252,12 +282,12 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
 
   Widget _detailRow(String label, String? value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontFamily: 'Poppins', fontWeight: FontWeight.w500))),
-          Expanded(child: Text(value ?? 'N/A', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Poppins', color: Colors.black))),
+          SizedBox(width: 110, child: Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontFamily: 'Poppins', fontWeight: FontWeight.w500))),
+          Expanded(child: Text(value ?? 'N/A', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Poppins', color: Colors.black87))),
         ],
       ),
     );
@@ -265,13 +295,13 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
 
   Widget _buildPill(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+      child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
     );
   }
 
@@ -281,9 +311,9 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 8))],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,9 +331,8 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                   child: Container(
                     margin: const EdgeInsets.only(right: 10),
                     width: 100,
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(11), 
+                      borderRadius: BorderRadius.circular(12),
                       child: Image.network(
                         job.imageUrls[index], 
                         fit: BoxFit.cover,
@@ -311,8 +340,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                           if (loadingProgress == null) return child;
                           return const Center(child: CircularProgressIndicator(strokeWidth: 2));
                         },
-                        errorBuilder: (c, e, s) => const Icon(Icons.broken_image, color: Colors.grey),
-                      )
+                      ),
                     ),
                   ),
                 ),
@@ -342,11 +370,11 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.red[50], border: Border.all(color: Colors.red.shade200), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(color: Colors.red[50], border: Border.all(color: Colors.red.shade200), borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [const Icon(Icons.info_outline, color: Colors.red, size: 18), const SizedBox(width: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontFamily: 'Poppins'))]),
+          Row(children: [const Icon(Icons.info_outline, color: Colors.red, size: 20), const SizedBox(width: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontFamily: 'Poppins'))]),
           const SizedBox(height: 8),
           Text(remarks, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87)),
         ],
@@ -355,18 +383,29 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
   }
 
   Widget _buildFeedbackBox(ComplaintModel job) {
-    return _buildInfoContainer([
-      const SizedBox(height: 10),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(5, (index) => Icon(index < job.rating ? Icons.star_rounded : Icons.star_outline_rounded, color: Colors.amber, size: 30)),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.amber.shade200),
       ),
-      if (job.review.isNotEmpty) ...[
-        const SizedBox(height: 12),
-        Text("\"${job.review}\"", style: const TextStyle(fontStyle: FontStyle.italic, fontFamily: 'Poppins', fontSize: 13), textAlign: TextAlign.center),
-      ],
-      const SizedBox(height: 10),
-    ]);
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) => Icon(index < job.rating ? Icons.star_rounded : Icons.star_outline_rounded, color: Colors.amber, size: 30)),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            job.review.isNotEmpty ? "\"${job.review}\"" : "No written comment provided.",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontStyle: FontStyle.italic, fontFamily: 'Poppins', fontSize: 14, color: Colors.amber.shade900),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showCompletionDialog(ComplaintModel job) {
