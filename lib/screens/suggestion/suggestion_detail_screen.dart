@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import '../../models/suggestion_model.dart';
 import '../../widgets/simple_video_player.dart';
 
+// Screen for displaying the full details of a specific Suggestion/Feedback.
+// Used by both Admins (to review ideas) and Residents (to view their own submissions).
 class SuggestionDetailScreen extends StatelessWidget {
   final SuggestionModel suggestion;
 
   const SuggestionDetailScreen({super.key, required this.suggestion});
 
-  // --- NEW FUNCTION: OPENS FULL SCREEN GALLERY ---
+  // --- GALLERY VIEWER ---
+  // Opens a full-screen, zoomable image viewer for the attached photos.
   void _openGallery(BuildContext context, int initialIndex) {
     Navigator.push(
       context,
@@ -26,6 +29,7 @@ class SuggestionDetailScreen extends StatelessWidget {
               ),
             ),
           ),
+          // PageView allows swiping between multiple images
           body: PageView.builder(
             itemCount: suggestion.imageUrls.length,
             controller: PageController(initialPage: initialIndex),
@@ -33,7 +37,7 @@ class SuggestionDetailScreen extends StatelessWidget {
               return InteractiveViewer(
                 panEnabled: true,
                 minScale: 0.5,
-                maxScale: 4.0,
+                maxScale: 4.0, // Allows zooming in up to 4x
                 child: Center(
                   child: Hero(
                     tag: suggestion.imageUrls[index],
@@ -59,11 +63,12 @@ class SuggestionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if media exists to determine layout
     bool hasPhotos = suggestion.imageUrls.isNotEmpty;
     bool hasVideo = suggestion.videoUrl != null && suggestion.videoUrl!.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: const Color(0xFFFAFAFA), // Off-white background
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -87,12 +92,12 @@ class SuggestionDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- SECTION 1: HEADER ---
+            // --- SECTION 1: HEADER (Title & Category) ---
             _buildHeader(),
 
             const SizedBox(height: 32),
 
-            // --- SECTION 2: CONTENT ---
+            // --- SECTION 2: DESCRIPTION CONTENT ---
             _buildSectionTitle("Improvement Idea"),
             _buildDescriptionBox(suggestion.description),
 
@@ -109,7 +114,8 @@ class SuggestionDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // --- SECTION 4: ORGANIZED EVIDENCE ---
+            // --- SECTION 4: MEDIA ATTACHMENTS ---
+            // Only visible if photos or videos are attached
             if (hasPhotos || hasVideo) ...[
               _buildSectionTitle("Attachments"),
               Container(
@@ -130,6 +136,7 @@ class SuggestionDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Photo Gallery (Horizontal List)
                     if (hasPhotos) ...[
                       Row(
                         children: [
@@ -156,11 +163,15 @@ class SuggestionDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+
+                    // Divider if both photo and video exist
                     if (hasPhotos && hasVideo)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
                         child: Divider(height: 1),
                       ),
+
+                    // Video Player
                     if (hasVideo) ...[
                       const Row(
                         children: [
@@ -194,6 +205,7 @@ class SuggestionDetailScreen extends StatelessWidget {
 
   // --- REUSABLE UI HELPERS ---
 
+  // Top box containing the Title and Category Pill
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
@@ -224,6 +236,7 @@ class SuggestionDetailScreen extends StatelessWidget {
     );
   }
 
+  // Standard section header text
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 12),
@@ -239,6 +252,7 @@ class SuggestionDetailScreen extends StatelessWidget {
     );
   }
 
+  // Box for the main description text
   Widget _buildDescriptionBox(String text) {
     return Container(
       width: double.infinity,
@@ -258,6 +272,7 @@ class SuggestionDetailScreen extends StatelessWidget {
     );
   }
 
+  // Card for personal details (Name, ID, etc.)
   Widget _buildInfoCard(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
@@ -275,6 +290,7 @@ class SuggestionDetailScreen extends StatelessWidget {
     );
   }
 
+  // Single row for info card (Label ...... Value)
   Widget _detailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -283,7 +299,7 @@ class SuggestionDetailScreen extends StatelessWidget {
         children: [
           // Label on the left
           SizedBox(
-            width: 120, // Slightly wider since there is no icon taking up space
+            width: 120, // Fixed width for alignment
             child: Text(
               label,
               style: TextStyle(
@@ -313,6 +329,7 @@ class SuggestionDetailScreen extends StatelessWidget {
     );
   }
 
+  // Colored tag/chip for the category
   Widget _buildPill(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -328,6 +345,7 @@ class SuggestionDetailScreen extends StatelessWidget {
     );
   }
 
+  // Thumbnail widget for images with a zoom icon overlay
   Widget _buildModernThumbnail(BuildContext context, int index) {
     final String url = suggestion.imageUrls[index];
     return GestureDetector(
@@ -342,6 +360,7 @@ class SuggestionDetailScreen extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // Image with Hero animation for smooth transitions
             Hero(
               tag: url,
               child: ClipRRect(
@@ -356,6 +375,7 @@ class SuggestionDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
+            // Zoom icon overlay
             Positioned(
               right: 5,
               bottom: 5,

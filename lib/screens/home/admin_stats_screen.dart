@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart'; 
-import 'package:pdf/widgets.dart' as pw; 
-import 'package:printing/printing.dart'; 
+
+// PDF & Printing packages for generating reports
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
 import '../../models/complaint_model.dart';
 
+// Screen displaying analytical data (KPIs, Charts) for Admins.
+// Includes functionality to filter data and export a PDF report.
 class AdminStatsScreen extends StatefulWidget {
   const AdminStatsScreen({super.key});
 
@@ -15,32 +20,40 @@ class AdminStatsScreen extends StatefulWidget {
 
 class _AdminStatsScreenState extends State<AdminStatsScreen> {
   // --- FILTER STATE ---
-  String _timeFilter = 'This Month'; 
+  // Controls the active filters applied to the dataset
+  String _timeFilter = 'This Month';
   String _buildingFilter = 'All';
   String _categoryFilter = 'All';
 
   @override
   Widget build(BuildContext context) {
+    // 1. Get raw data from Provider (all complaints in the system)
     final allComplaints = Provider.of<List<ComplaintModel>>(context);
 
-    // --- 1. PREPARE DYNAMIC FILTER LISTS ---
+    // --- 2. PREPARE DYNAMIC FILTER LISTS ---
+    // Instead of hardcoding, we extract unique values from the actual data.
+    // This ensures dropdowns only show buildings/months that actually exist.
     final Set<String> buildings = {'All', ...allComplaints.map((e) => e.building ?? 'Unknown').toSet()};
+
     final Set<String> categories = {
-      'All', 
-      'Furniture', 'Mechanical', 'Electrical', 'Plumbing/Sink', 
+      'All',
+      'Furniture', 'Mechanical', 'Electrical', 'Plumbing/Sink',
       'Waste Water', 'Wi-Fi', 'Other'
     };
 
+    // Generate time options based on available data timestamps
     Set<String> timeOptions = {'This Month', 'Last Month', 'This Year', 'All Time'};
     for (var c in allComplaints) {
       timeOptions.add(DateFormat('MMMM yyyy').format(c.timestamp));
     }
 
-    // --- 2. FILTER LOGIC ---
+    // --- 3. FILTER LOGIC ---
+    // Create a new list 'filteredList' based on selected criteria
     List<ComplaintModel> filteredList = allComplaints.where((c) {
       bool timeMatch = true;
       final now = DateTime.now();
-      
+
+      // Time Filtering
       if (_timeFilter == 'This Month') {
         timeMatch = c.timestamp.month == now.month && c.timestamp.year == now.year;
       } else if (_timeFilter == 'Last Month') {
@@ -51,15 +64,19 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
       } else if (_timeFilter == 'All Time') {
         timeMatch = true;
       } else {
+        // Handle specific months (e.g., "October 2023")
         String cDate = DateFormat('MMMM yyyy').format(c.timestamp);
         timeMatch = cDate == _timeFilter;
       }
 
+      // Building Filtering
       bool buildingMatch = _buildingFilter == 'All' || (c.building ?? 'Unknown') == _buildingFilter;
 
+      // Category Filtering
       bool categoryMatch = true;
       if (_categoryFilter != 'All') {
         if (_categoryFilter == 'Other') {
+          // If 'Other' is selected, include anything NOT in the standard list
           final standard = ['Furniture', 'Mechanical', 'Electrical', 'Plumbing/Sink', 'Waste Water', 'Wi-Fi'];
           categoryMatch = !standard.contains(c.category);
         } else {
@@ -70,11 +87,14 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
       return timeMatch && buildingMatch && categoryMatch;
     }).toList();
 
-    // --- 3. CALCULATE KPIs ---
+    // --- 4. CALCULATE KPIs ---
+    // Compute statistics based on the FILTERED list
     int total = filteredList.length;
     int resolved = filteredList.where((c) => c.status == 'Resolved').length;
     int pending = filteredList.where((c) => c.status == 'Pending').length;
     int inProgress = filteredList.where((c) => c.status == 'In Progress').length;
+
+    // Avoid division by zero
     double completionRate = total == 0 ? 0 : (resolved / total) * 100;
 
     return Scaffold(
@@ -94,118 +114,128 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
           ),
         ),
         actions: [
+          // PDF Export Button
           IconButton(
             icon: const Icon(Icons.print_outlined, color: Color(0xFF003366)),
             tooltip: "Download PDF Report",
-            onPressed: allComplaints.isEmpty 
-              ? null 
-              : () => _generatePdf(filteredList, total, resolved, pending, inProgress, completionRate),
+            // Disable button if no data available
+            onPressed: allComplaints.isEmpty
+                ? null
+                : () => _generatePdf(filteredList, total, resolved, pending, inProgress, completionRate),
           ),
           const SizedBox(width: 8),
         ],
       ),
-      
-      body: allComplaints.isEmpty 
-        ? const Center(child: CircularProgressIndicator()) 
-        : SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- FILTER BAR (Clean Horizontal Scroll) ---
-              SingleChildScrollView( 
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildDropdownChip(
-                      icon: Icons.calendar_today,
-                      label: "Time",
-                      value: _timeFilter,
-                      items: timeOptions.toList(),
-                      onChanged: (val) => setState(() => _timeFilter = val!),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildDropdownChip(
-                      icon: Icons.business,
-                      label: "Property",
-                      value: _buildingFilter,
-                      items: buildings.toList(),
-                      onChanged: (val) => setState(() => _buildingFilter = val!),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildDropdownChip(
-                      icon: Icons.category_outlined,
-                      label: "Category",
-                      value: _categoryFilter,
-                      items: categories.toList(),
-                      onChanged: (val) => setState(() => _categoryFilter = val!),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
 
-              // --- KPI GRID ---
-              Row(
+      body: allComplaints.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- FILTER BAR (Clean Horizontal Scroll) ---
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 children: [
-                  Expanded(child: _buildKPICard("Total Issues", "$total", Icons.folder_open, Colors.blue)),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildKPICard("Completion", "${completionRate.toStringAsFixed(0)}%", Icons.pie_chart, Colors.green)),
+                  _buildDropdownChip(
+                    icon: Icons.calendar_today,
+                    label: "Time",
+                    value: _timeFilter,
+                    items: timeOptions.toList(),
+                    onChanged: (val) => setState(() => _timeFilter = val!),
+                  ),
+                  const SizedBox(width: 12),
+                  _buildDropdownChip(
+                    icon: Icons.business,
+                    label: "Property",
+                    value: _buildingFilter,
+                    items: buildings.toList(),
+                    onChanged: (val) => setState(() => _buildingFilter = val!),
+                  ),
+                  const SizedBox(width: 12),
+                  _buildDropdownChip(
+                    icon: Icons.category_outlined,
+                    label: "Category",
+                    value: _categoryFilter,
+                    items: categories.toList(),
+                    onChanged: (val) => setState(() => _categoryFilter = val!),
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(child: _buildKPICard("Pending", "$pending", Icons.assignment_late_outlined, Colors.orange)),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildKPICard("In Progress", "$inProgress", Icons.engineering_outlined, Colors.purple)),
-                ],
-              ),
+            ),
+            const SizedBox(height: 24),
 
-              const SizedBox(height: 32),
+            // --- KPI GRID ---
+            // Row 1: Total & Completion Rate
+            Row(
+              children: [
+                Expanded(child: _buildKPICard("Total Issues", "$total", Icons.folder_open, Colors.blue)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildKPICard("Completion", "${completionRate.toStringAsFixed(0)}%", Icons.pie_chart, Colors.green)),
+              ],
+            ),
+            const SizedBox(height: 16),
 
-              // --- CHARTS SECTION ---
-              _buildChartSection(
-                title: "Issues by Category",
-                child: _buildCategoryBarChart(filteredList),
-              ),
+            // Row 2: Pending & In Progress
+            Row(
+              children: [
+                Expanded(child: _buildKPICard("Pending", "$pending", Icons.assignment_late_outlined, Colors.orange)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildKPICard("In Progress", "$inProgress", Icons.engineering_outlined, Colors.purple)),
+              ],
+            ),
 
-              const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-              _buildChartSection(
-                title: "Property Hotspots",
-                child: _buildPropertyHotspots(filteredList),
-              ),
-              
-              const SizedBox(height: 40),
-            ],
-          ),
+            // --- VISUALIZATIONS ---
+            // 1. Category Chart
+            _buildChartSection(
+              title: "Issues by Category",
+              child: _buildCategoryBarChart(filteredList),
+            ),
+
+            const SizedBox(height: 24),
+
+            // 2. Property Hotspots
+            _buildChartSection(
+              title: "Property Hotspots",
+              child: _buildPropertyHotspots(filteredList),
+            ),
+
+            const SizedBox(height: 40),
+          ],
         ),
+      ),
     );
   }
 
-  // --- PDF GENERATOR (Kept Logic, unchanged) ---
+  // --- PDF GENERATOR ---
+  // Creates a PDF document summarizing the currently filtered data.
   Future<void> _generatePdf(
-    List<ComplaintModel> data, 
-    int total, int resolved, int pending, int inProgress, double rate
-  ) async {
+      List<ComplaintModel> data,
+      int total, int resolved, int pending, int inProgress, double rate
+      ) async {
     final pdf = pw.Document();
-    
-    // Group Data
+
+    // 1. Aggregate Data for the PDF
     Map<String, int> catCounts = {};
     for (var c in data) { catCounts[c.category] = (catCounts[c.category] ?? 0) + 1; }
-    
+
     Map<String, int> bldCounts = {};
-    for (var c in data) { 
+    for (var c in data) {
       String b = c.building ?? "Unknown";
-      bldCounts[b] = (bldCounts[b] ?? 0) + 1; 
+      bldCounts[b] = (bldCounts[b] ?? 0) + 1;
     }
 
+    // 2. Build PDF Structure
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
-        
+
+        // Header (Logo/Title)
         header: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -220,7 +250,8 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
               pw.SizedBox(height: 5),
               pw.Divider(thickness: 1, color: PdfColors.grey300),
               pw.SizedBox(height: 10),
-              
+
+              // Display Scope (What filters were active)
               pw.Container(
                 padding: const pw.EdgeInsets.all(10),
                 decoration: pw.BoxDecoration(
@@ -244,9 +275,11 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
           );
         },
 
+        // Body Content
         build: (pw.Context context) => [
           pw.Text("Performance Summary", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 10),
+          // KPI Table
           pw.Table.fromTextArray(
             headers: ['Metric', 'Value'],
             data: [
@@ -262,9 +295,10 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
             cellAlignments: {0: pw.Alignment.centerLeft, 1: pw.Alignment.centerRight},
             cellPadding: const pw.EdgeInsets.all(8),
           ),
-          
+
           pw.SizedBox(height: 30),
 
+          // Category Table
           pw.Text("Breakdown by Category", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 10),
           pw.Table.fromTextArray(
@@ -279,6 +313,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
 
           pw.SizedBox(height: 30),
 
+          // Property Table
           pw.Text("Breakdown by Property", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 10),
           pw.Table.fromTextArray(
@@ -290,7 +325,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
             cellAlignments: {0: pw.Alignment.centerLeft, 1: pw.Alignment.centerRight},
             cellPadding: const pw.EdgeInsets.all(8),
           ),
-          
+
           pw.SizedBox(height: 40),
           pw.Divider(color: PdfColors.grey300),
           pw.Center(
@@ -300,6 +335,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
       ),
     );
 
+    // 3. Trigger Print/Share Dialog
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
     );
@@ -307,10 +343,10 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
 
   // --- UI WIDGETS ---
 
-  // Cleaner Dropdown Chip
+  // Custom styling for the filter dropdowns
   Widget _buildDropdownChip({
     required IconData icon,
-    required String label, 
+    required String label,
     required String value,
     required List<String> items,
     required Function(String?) onChanged,
@@ -343,7 +379,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
     );
   }
 
-  // Modern KPI Card
+  // Styled card for displaying single statistics (e.g., Total Issues)
   Widget _buildKPICard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -370,7 +406,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
     );
   }
 
-  // Chart Container Wrapper
+  // Wrapper for chart sections
   Widget _buildChartSection({required String title, required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -396,14 +432,17 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
     );
   }
 
+  // Visualizes category counts using a list of progress bars
   Widget _buildCategoryBarChart(List<ComplaintModel> data) {
     if (data.isEmpty) return const Center(child: Text("No data matching filters."));
 
+    // Aggregate counts
     Map<String, int> counts = {};
     for (var c in data) {
       counts[c.category] = (counts[c.category] ?? 0) + 1;
     }
-    
+
+    // Sort by count descending
     var sortedKeys = counts.keys.toList()..sort((a, b) => counts[b]!.compareTo(counts[a]!));
     int max = counts.values.isEmpty ? 1 : counts.values.reduce((a, b) => a > b ? a : b);
 
@@ -411,7 +450,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
       children: sortedKeys.map((key) {
         int count = counts[key]!;
         double pct = count / max;
-        
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Row(
@@ -442,12 +481,13 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
     );
   }
 
+  // Visualizes property counts, highlighting 'hotspots' (high volume areas)
   Widget _buildPropertyHotspots(List<ComplaintModel> data) {
     if (data.isEmpty) return const Center(child: Text("No data matching filters."));
 
     Map<String, int> counts = {};
     for (var c in data) {
-      String buildingName = c.building ?? "Unknown"; 
+      String buildingName = c.building ?? "Unknown";
       counts[buildingName] = (counts[buildingName] ?? 0) + 1;
     }
 
@@ -479,6 +519,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
                   minHeight: 8,
                   backgroundColor: Colors.grey[100],
                   valueColor: AlwaysStoppedAnimation<Color>(
+                    // Highlight in Red if count > 5, else Orange
                     count > 5 ? Colors.redAccent : Colors.orangeAccent,
                   ),
                 ),

@@ -3,11 +3,15 @@ import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../services/database_service.dart';
 
+// Screen for Admins to view and approve/reject new resident registrations.
+// Residents cannot log in until their account is approved here.
 class UserApprovalScreen extends StatelessWidget {
   const UserApprovalScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // StreamProvider listens to real-time updates from Firestore.
+    // It fetches all users where 'isApproved' is false (pending status).
     return StreamProvider<List<UserModel>>.value(
       value: DatabaseService().pendingResidents,
       initialData: const [],
@@ -31,19 +35,24 @@ class UserApprovalScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
           ),
         ),
+        // Separate widget for the list content to keep build method clean
         body: const _PendingUserList(),
       ),
     );
   }
 }
 
+// Consumes the provided user list and renders the UI
 class _PendingUserList extends StatelessWidget {
   const _PendingUserList();
 
   @override
   Widget build(BuildContext context) {
+    // Access the list of pending users provided by StreamProvider
     final users = Provider.of<List<UserModel>>(context);
 
+    // --- 1. EMPTY STATE ---
+    // Shown when there are no new registrations to review
     if (users.isEmpty) {
       return Center(
         child: Column(
@@ -60,6 +69,8 @@ class _PendingUserList extends StatelessWidget {
       );
     }
 
+    // --- 2. LIST VIEW ---
+    // Renders a card for each pending user
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: users.length,
@@ -69,6 +80,8 @@ class _PendingUserList extends StatelessWidget {
     );
   }
 
+  // --- USER CARD UI ---
+  // Displays the applicant's details and action buttons
   Widget _buildUserCard(BuildContext context, UserModel user) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -81,11 +94,12 @@ class _PendingUserList extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // --- 1. HEADER (Avatar + Name) ---
+          // --- HEADER: Avatar, Name & Role ---
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
+                // Initials Avatar
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: const Color(0xFF003366).withOpacity(0.1),
@@ -95,6 +109,8 @@ class _PendingUserList extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
+
+                // Name & Role Label
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,8 +128,7 @@ class _PendingUserList extends StatelessWidget {
                           border: Border.all(color: Colors.blue.shade100),
                         ),
                         child: Text(
-                          // --- FIX: CHANGED FROM user.userType TO user.role ---
-                          user.role.toUpperCase(), 
+                          user.role.toUpperCase(),
                           style: TextStyle(fontSize: 10, color: Colors.blue[800], fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -123,10 +138,10 @@ class _PendingUserList extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
 
-          // --- 2. DETAILS SECTION ---
+          // --- BODY: Contact & ID Details ---
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -140,7 +155,7 @@ class _PendingUserList extends StatelessWidget {
             ),
           ),
 
-          // --- 3. ACTIONS FOOTER ---
+          // --- FOOTER: Approve / Reject Buttons ---
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
@@ -152,6 +167,7 @@ class _PendingUserList extends StatelessWidget {
             ),
             child: Row(
               children: [
+                // Reject Button
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _rejectUser(context, user),
@@ -165,6 +181,8 @@ class _PendingUserList extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
+
+                // Approve Button
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => _approveUser(context, user),
@@ -185,6 +203,8 @@ class _PendingUserList extends StatelessWidget {
     );
   }
 
+  // --- UI HELPER: INFO ROW ---
+  // Standardized row for icon + label + value
   Widget _infoRow(IconData icon, String label, String value) {
     return Row(
       children: [
@@ -201,6 +221,8 @@ class _PendingUserList extends StatelessWidget {
     );
   }
 
+  // --- HELPER: GET INITIALS ---
+  // Turns "John Doe" into "JD" for the avatar
   String _getInitials(String? name) {
     if (name == null || name.isEmpty) return "?";
     List<String> parts = name.trim().split(" ");
@@ -208,16 +230,16 @@ class _PendingUserList extends StatelessWidget {
     return parts[0][0].toUpperCase();
   }
 
-  // --- ACTIONS LOGIC ---
-
+  // --- ACTION: APPROVE USER ---
+  // Calls the database service to set 'isApproved' to true.
   Future<void> _approveUser(BuildContext context, UserModel user) async {
     await DatabaseService().approveUser(user.uid);
     if(context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(children: [
-            const Icon(Icons.check_circle, color: Colors.white), 
-            const SizedBox(width: 10), 
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 10),
             Text("${user.fullName} Approved!")
           ]),
           backgroundColor: Colors.green,
@@ -228,6 +250,8 @@ class _PendingUserList extends StatelessWidget {
     }
   }
 
+  // --- ACTION: REJECT USER ---
+  // Shows a confirmation dialog, then deletes the user request if confirmed.
   Future<void> _rejectUser(BuildContext context, UserModel user) async {
     bool? confirm = await showDialog(
       context: context,
@@ -247,6 +271,7 @@ class _PendingUserList extends StatelessWidget {
     );
 
     if (confirm == true) {
+      // Calls database service to delete the user document
       await DatabaseService().rejectUser(user.uid);
     }
   }

@@ -19,6 +19,8 @@ import '../suggestion/suggestion_detail_screen.dart';
 import '../../widgets/notification_badge.dart';
 import '../home/user_profile_page.dart';
 
+// The main dashboard for Residents (Students/Staff).
+// Displays their complaints categorized by status and allows them to submit new reports or suggestions.
 class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
 
@@ -28,11 +30,14 @@ class UserHomeScreen extends StatefulWidget {
 
 class _UserHomeScreenState extends State<UserHomeScreen> {
   // --- FAB STATE ---
+  // Controls the visibility of the expandable Floating Action Button menu
   bool _isMenuOpen = false;
 
   @override
   void initState() {
     super.initState();
+    // Initialize Notification Service when screen loads.
+    // Requests permission and saves the FCM token so the user can receive updates.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = Provider.of<UserModel?>(context, listen: false);
       if (user != null) {
@@ -42,6 +47,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   }
 
   // --- LOGOUT DIALOG ---
+  // Confirms if the user wants to sign out.
   void _showLogoutDialog(BuildContext context, AuthService auth) {
     showDialog(
       context: context,
@@ -92,6 +98,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   }
 
   // --- FAB LABEL HELPER ---
+  // Creates the small text label next to the mini-FABs (e.g. "Report Issue")
   Widget _buildFabLabel(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -123,17 +130,24 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     final AuthService auth = AuthService();
     final user = Provider.of<UserModel?>(context);
 
+    // Safety check: Show loading if user data isn't ready
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    // StreamProvider listens to the list of complaints submitted by THIS user.
+    // We fetch ALL complaints once here, and pass them down to the tabs for filtering.
     return StreamBuilder<List<ComplaintModel>>(
       stream: ComplaintService().getUserComplaints(user.uid),
       builder: (context, snapshot) {
         List<ComplaintModel> allComplaints = snapshot.data ?? [];
 
         return DefaultTabController(
-          // --- 4 TABS (Split Pending & Active) ---
+          // --- 4 TABS ---
+          // 1. Requested (Pending)
+          // 2. Updates (In Progress/Verify)
+          // 3. History (Resolved/Invalid)
+          // 4. My Ideas (Suggestions)
           length: 4,
           child: Scaffold(
             backgroundColor: const Color(0xFFF5F7FA), // Light Grey Background
@@ -141,13 +155,13 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
               backgroundColor: Colors.white,
               elevation: 0.5,
               centerTitle: true,
-              
-              // --- 1. LEFT PADDING FIXED (8.0) ---
+
+              // --- 1. PROFILE MENU (LEFT) ---
               leading: Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: _buildProfileMenu(context, auth),
               ),
-              
+
               title: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -172,51 +186,59 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   ),
                 ],
               ),
-              
+
               actions: [
-                // --- 2. RIGHT PADDING FIXED (8.0) ---
+                // --- 2. NOTIFICATION BADGE (RIGHT) ---
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: NotificationBadge(userId: user.uid),
                 ),
               ],
-              
+
+              // --- TAB BAR CONFIGURATION ---
               bottom: const TabBar(
-                isScrollable: true,
+                isScrollable: false, // Forces tabs to fill width
                 labelColor: Color(0xFF003366),
                 unselectedLabelColor: Colors.grey,
                 indicatorColor: Color(0xFF003366),
                 indicatorWeight: 3,
+                labelPadding: EdgeInsets.zero,
                 labelStyle: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12),
                 tabs: [
                   Tab(text: "Requested"), // Pending
                   Tab(text: "Updates"),   // In Progress + Verification
                   Tab(text: "History"),   // Resolved + Invalid
-                  Tab(text: "My Ideas"),
+                  Tab(text: "My Ideas"),  // Suggestions
                 ],
               ),
             ),
+
+            // Expandable Floating Action Button
             floatingActionButton: _buildExpandableFab(context),
+
+            // --- TAB CONTENT ---
             body: Stack(
               children: [
                 TabBarView(
                   children: [
                     // Tab 1: Pending (Requested)
                     ResidentComplaintList(allComplaints: allComplaints, filterType: 'pending'),
-                    
+
                     // Tab 2: Updates (In Progress + Verification)
                     ResidentComplaintList(allComplaints: allComplaints, filterType: 'active'),
-                    
+
                     // Tab 3: History (Resolved + Invalid)
                     ResidentComplaintList(allComplaints: allComplaints, filterType: 'history'),
-                    
-                    // Tab 4: Suggestions (UPDATED UI)
+
+                    // Tab 4: Suggestions (My Ideas)
                     ResidentSuggestionList(userUid: user.uid),
                   ],
                 ),
+                // Show loading spinner if waiting for initial data
                 if (snapshot.connectionState == ConnectionState.waiting)
                   const Center(child: CircularProgressIndicator()),
-                
+
+                // Overlay to dim background when FAB menu is open
                 if (_isMenuOpen)
                   GestureDetector(
                     onTap: () => setState(() => _isMenuOpen = false),
@@ -232,6 +254,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
   // --- WIDGET BREAKDOWNS ---
 
+  // Builds the circular profile icon with a popup menu
   Widget _buildProfileMenu(BuildContext context, AuthService auth) {
     return PopupMenuButton<String>(
       offset: const Offset(0, 45),
@@ -267,7 +290,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           ),
         ),
       ],
-      // --- 3. RESTORED ORIGINAL GREY ICON ---
+      // The trigger icon
       child: Center(
         child: CircleAvatar(
           radius: 15,
@@ -278,11 +301,13 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     );
   }
 
+  // Builds the expandable FAB menu (Report Issue / Send Feedback)
   Widget _buildExpandableFab(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
+        // Button 1: Send Feedback
         AnimatedOpacity(
           duration: const Duration(milliseconds: 250),
           opacity: _isMenuOpen ? 1.0 : 0.0,
@@ -308,6 +333,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        // Button 2: Report Issue
         AnimatedOpacity(
           duration: const Duration(milliseconds: 200),
           opacity: _isMenuOpen ? 1.0 : 0.0,
@@ -333,17 +359,18 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        // Main Trigger Button (Rotates when open)
         FloatingActionButton(
           heroTag: "mainFab",
           backgroundColor: _isMenuOpen ? Colors.grey[300] : const Color.fromARGB(255, 24, 109, 149),
           onPressed: () => setState(() => _isMenuOpen = !_isMenuOpen),
           child: AnimatedRotation(
             duration: const Duration(milliseconds: 300),
-            turns: _isMenuOpen ? 0.375 : 0,
+            turns: _isMenuOpen ? 0.375 : 0, // Rotates 135 degrees
             child: Icon(
-              Icons.add, 
-              color: _isMenuOpen ? Colors.black87 : Colors.white, 
-              size: 28
+                Icons.add,
+                color: _isMenuOpen ? Colors.black87 : Colors.white,
+                size: 28
             ),
           ),
         ),
@@ -352,7 +379,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   }
 }
 
-// --- RESIDENT SUGGESTION LIST (ENHANCED UI) ---
+// --- RESIDENT SUGGESTION LIST COMPONENT ---
+// Displays the "My Ideas" tab content.
 class ResidentSuggestionList extends StatefulWidget {
   final String userUid;
   const ResidentSuggestionList({super.key, required this.userUid});
@@ -364,6 +392,7 @@ class ResidentSuggestionList extends StatefulWidget {
 class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
   String _sortBy = 'Latest';
 
+  // Helper for Category Colors
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Safety & Security': return Colors.red;
@@ -375,6 +404,7 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
     }
   }
 
+  // Helper for Category Icons
   IconData _getCategoryIcon(String category) {
     switch (category) {
       case 'Safety & Security': return Icons.security;
@@ -386,6 +416,7 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
     }
   }
 
+  // Bottom sheet to select sorting order
   void _showSortOptions() {
     showModalBottomSheet(
       context: context,
@@ -419,18 +450,21 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
 
   @override
   Widget build(BuildContext context) {
+    // Fetches suggestions specific to this user
     return StreamProvider<List<SuggestionModel>>.value(
       value: SuggestionService().getUserSuggestions(widget.userUid),
       initialData: const [],
       child: Consumer<List<SuggestionModel>>(
         builder: (context, suggestions, child) {
+          // Sort the list locally based on _sortBy state
           List<SuggestionModel> displayList = List.from(suggestions);
-          displayList.sort((a, b) => _sortBy == 'Latest' 
-              ? b.timestamp.compareTo(a.timestamp) 
+          displayList.sort((a, b) => _sortBy == 'Latest'
+              ? b.timestamp.compareTo(a.timestamp)
               : a.timestamp.compareTo(b.timestamp));
 
           return Column(
             children: [
+              // Filter/Sort Bar
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 color: Colors.white,
@@ -447,16 +481,18 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
                 ),
               ),
               const Divider(height: 1),
+
+              // List Content
               Expanded(
-                child: displayList.isEmpty 
-                  ? const Center(child: Text("No suggestions yet.", style: TextStyle(color: Colors.grey)))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: displayList.length,
-                      itemBuilder: (context, index) {
-                        return _buildSuggestionCard(context, displayList[index]);
-                      },
-                    ),
+                child: displayList.isEmpty
+                    ? const Center(child: Text("No suggestions yet.", style: TextStyle(color: Colors.grey)))
+                    : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: displayList.length,
+                  itemBuilder: (context, index) {
+                    return _buildSuggestionCard(context, displayList[index]);
+                  },
+                ),
               ),
             ],
           );
@@ -465,6 +501,7 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
     );
   }
 
+  // UI for a single suggestion item
   Widget _buildSuggestionCard(BuildContext context, SuggestionModel item) {
     final catColor = _getCategoryColor(item.category);
     final catIcon = _getCategoryIcon(item.category);
@@ -501,7 +538,7 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
                       child: Icon(catIcon, color: catColor, size: 22),
                     ),
                     const SizedBox(width: 16),
-                    
+
                     // Text Content
                     Expanded(
                       child: Column(
@@ -523,7 +560,7 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
                             ],
                           ),
                           const SizedBox(height: 6),
-                          
+
                           // Title
                           Text(
                             item.title,
@@ -539,14 +576,14 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
                         ],
                       ),
                     ),
-                    
+
                     // Arrow
                     const SizedBox(width: 12),
                     const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
                   ],
                 ),
-                
-                // Preview Text (Optional)
+
+                // Description Preview (Optional)
                 if (item.description.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(height: 1),
@@ -567,7 +604,8 @@ class _ResidentSuggestionListState extends State<ResidentSuggestionList> {
   }
 }
 
-// --- RESIDENT COMPLAINT LIST ---
+// --- RESIDENT COMPLAINT LIST COMPONENT ---
+// Reusable list for the "Requested", "Updates", and "History" tabs.
 class ResidentComplaintList extends StatefulWidget {
   final List<ComplaintModel> allComplaints;
   final String filterType; // 'pending', 'active', 'history'
@@ -599,6 +637,7 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
     return Colors.grey;
   }
 
+  // Filter Bottom Sheet
   void _showFilterOptions() {
     showModalBottomSheet(
       context: context,
@@ -652,7 +691,7 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Filter by Tab Logic
+    // 1. Filter by Tab Logic (using filterType passed from parent)
     List<ComplaintModel> filteredList = widget.allComplaints.where((job) {
       if (widget.filterType == 'pending') {
         return job.status == 'Pending';
@@ -664,15 +703,15 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
       }
     }).toList();
 
-    // 2. Filter by Priority
+    // 2. Filter by Priority (if selected)
     if (_priorityFilter != "All") {
       filteredList = filteredList.where((job) => job.priority == _priorityFilter).toList();
     }
 
-    // 3. Sort
-    filteredList.sort((a, b) => _sortBy == 'Latest' 
-      ? b.timestamp.compareTo(a.timestamp) 
-      : a.timestamp.compareTo(b.timestamp));
+    // 3. Sort by Date
+    filteredList.sort((a, b) => _sortBy == 'Latest'
+        ? b.timestamp.compareTo(a.timestamp)
+        : a.timestamp.compareTo(b.timestamp));
 
     return Column(
       children: [
@@ -691,29 +730,30 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
               ),
               const Spacer(),
               Text(
-                "${filteredList.length} items", 
-                style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
+                  "${filteredList.length} items",
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
               ),
             ],
           ),
         ),
-        
+
         const Divider(height: 1),
 
-        // --- LIST ---
+        // --- LIST VIEW ---
         Expanded(
           child: filteredList.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredList.length,
-                  itemBuilder: (context, index) => _buildJobCard(context, filteredList[index]),
-                ),
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredList.length,
+            itemBuilder: (context, index) => _buildJobCard(context, filteredList[index]),
+          ),
         ),
       ],
     );
   }
 
+  // --- EMPTY STATE UI ---
   Widget _buildEmptyState() {
     String message = "No items found.";
     IconData icon = Icons.history_edu;
@@ -738,6 +778,8 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
     );
   }
 
+  // --- JOB CARD COMPONENT ---
+  // Visual representation of a complaint.
   Widget _buildJobCard(BuildContext context, ComplaintModel job) {
     Color statusColor = _getStatusColor(job.status);
     Color priorityColor = _getPriorityColor(job.priority);
@@ -757,13 +799,14 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
+        // Navigate to details screen on tap
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ResidentComplaintDetail(job: job))),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Row 1: Status + Menu
+              // Row 1: Status + Menu Arrow
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -784,19 +827,19 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
                   Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Row 2: Title
               Text(
-                job.title, 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Poppins'),
-                maxLines: 1, 
-                overflow: TextOverflow.ellipsis
+                  job.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Poppins'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis
               ),
               const SizedBox(height: 8),
 
-              // Row 3: Priority & Category
+              // Row 3: Priority & Category Pills
               Row(
                 children: [
                   Container(
@@ -807,7 +850,7 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
                       border: Border.all(color: priorityColor.withOpacity(0.3)),
                     ),
                     child: Text(
-                      "${job.priority} Priority", 
+                      "${job.priority} Priority",
                       style: TextStyle(color: priorityColor, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -824,7 +867,7 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
                         Icon(Icons.category, size: 10, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Text(
-                          job.category, 
+                          job.category,
                           style: TextStyle(color: Colors.grey[700], fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -834,8 +877,8 @@ class _ResidentComplaintListState extends State<ResidentComplaintList> {
               ),
 
               const SizedBox(height: 12),
-              
-              // Rejected Message Highlight
+
+              // Rejected Message Highlight (Only if Invalid)
               if (job.status == 'Invalid') ...[
                 Container(
                   width: double.infinity,

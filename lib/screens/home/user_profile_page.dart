@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 
+// Screen that displays the current user's profile information.
+// It fetches data from Firestore and displays it in a scrollable, professional layout.
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -11,15 +13,20 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  // State variables to handle loading and data storage
   bool _isLoading = true;
   UserModel? _userData;
 
   @override
   void initState() {
     super.initState();
+    // Fetch profile data as soon as the screen initializes
     _fetchUserData();
   }
 
+  // --- FETCH DATA ---
+  // Retrieves the full user document from the 'users' collection in Firestore.
+  // We do this instead of relying solely on the Provider to ensure we have the latest data fields.
   Future<void> _fetchUserData() async {
     final user = Provider.of<UserModel?>(context, listen: false);
     if (user != null) {
@@ -31,6 +38,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
         if (doc.exists && mounted) {
           setState(() {
+            // Convert Firestore data into our UserModel
             _userData = UserModel.fromMap(doc.data() as Map<String, dynamic>, user.uid);
             _isLoading = false;
           });
@@ -45,46 +53,51 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F4F8), // Neutral professional background
+      backgroundColor: const Color(0xFFF1F4F8), // Neutral professional background color
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF003366)))
           : _userData == null
-              ? const Center(child: Text("User data not found"))
-              : CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    // 1. The Header with the Profile Image
-                    _buildHeader(),
+          ? const Center(child: Text("User data not found"))
+          : CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // 1. HEADER SECTION (SliverAppBar)
+          // Contains the gradient background and profile avatar
+          _buildHeader(),
 
-                    // 2. The Content
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-                        child: Column(
-                          children: [
-                            _buildIdentificationCard(),
-                            const SizedBox(height: 20),
-                            _buildContactCard(),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+          // 2. CONTENT SECTION (SliverToBoxAdapter)
+          // Contains the info cards below the header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+              child: Column(
+                children: [
+                  _buildIdentificationCard(),
+                  const SizedBox(height: 20),
+                  _buildContactCard(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
+  // --- HEADER WIDGET ---
+  // A collapsing app bar that holds the profile picture and name.
   Widget _buildHeader() {
     return SliverAppBar(
-      expandedHeight: 220,
-      pinned: true,
-      stretch: true,
+      expandedHeight: 220, // Total height when fully expanded
+      pinned: true,        // Keeps the app bar visible when scrolled up
+      stretch: true,       // Allows over-scrolling effect
       elevation: 0,
       backgroundColor: const Color(0xFF003366),
-      // This creates the "Professional" transition
+      // FlexibleSpaceBar handles the collapsing animation logic
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: true,
         titlePadding: const EdgeInsets.only(bottom: 16),
+        // The title (Name) moves into the AppBar position as you scroll
         title: Text(
           _userData!.fullName ?? "Profile",
           style: const TextStyle(
@@ -93,10 +106,11 @@ class _ProfilePageState extends State<ProfilePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        // The background content behind the title
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Dark Blue Background
+            // Gradient Background
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -106,13 +120,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ),
-            // Decorative elements to make it look "Pro"
+            // Decorative faded circle for visual flair
             Positioned(
               right: -20,
               top: -20,
               child: CircleAvatar(radius: 80, backgroundColor: Colors.white.withOpacity(0.05)),
             ),
-            // Profile Image
+            // Profile Image (Centered)
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -128,7 +142,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Icon(Icons.person, size: 45, color: Color(0xFF003366)),
                     ),
                   ),
-                  const SizedBox(height: 45), // Space for the pinned title
+                  const SizedBox(height: 45), // Reserve space for the title text
                 ],
               ),
             ),
@@ -138,6 +152,9 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // --- INFO CARDS ---
+
+  // Card 1: ID details (Name, Matric/Staff ID)
   Widget _buildIdentificationCard() {
     return _buildProfessionalCard(
       title: "Identification",
@@ -148,6 +165,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // Card 2: Contact info (Email, Phone, Role)
   Widget _buildContactCard() {
     return _buildProfessionalCard(
       title: "Contact & Role",
@@ -159,10 +177,12 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // Helper method to create a standardized white card container
   Widget _buildProfessionalCard({required String title, required List<Widget> children}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Section Header Label
         Padding(
           padding: const EdgeInsets.only(left: 8, bottom: 8, top: 20),
           child: Text(
@@ -170,6 +190,7 @@ class _ProfilePageState extends State<ProfilePage> {
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.1),
           ),
         ),
+        // The Card Itself
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -191,6 +212,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // Helper method to create a single row of information (Icon + Label + Value)
   Widget _infoTile(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.all(16.0),

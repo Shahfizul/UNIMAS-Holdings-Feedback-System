@@ -5,6 +5,8 @@ import '../../models/complaint_model.dart';
 import '../../services/complaint_service.dart';
 import '../../widgets/simple_video_player.dart';
 
+// Screen for Maintainers to view full details of a specific job (complaint).
+// Allows them to view the issue, check evidence, and submit a completion report.
 class MaintainerJobDetail extends StatefulWidget {
   final ComplaintModel job;
 
@@ -15,11 +17,12 @@ class MaintainerJobDetail extends StatefulWidget {
 }
 
 class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
-  
+
   // --- COLOR RULES ---
+  // Helper functions to determine UI colors based on data values
   Color _getPriorityColor(String priority) {
     if (priority == 'High') return Colors.red;
-    if (priority == 'Medium') return Colors.orange; 
+    if (priority == 'Medium') return Colors.orange;
     if (priority == 'Low') return Colors.green;
     return Colors.grey;
   }
@@ -34,6 +37,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
   }
 
   // --- OPENS FULL SCREEN GALLERY ---
+  // Allows maintainers to zoom in on evidence photos
   void _openGallery(BuildContext context, List<String> urls, int initialIndex) {
     Navigator.push(
       context,
@@ -69,11 +73,14 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to real-time updates for this specific job document.
+    // This ensures that if an Admin rejects the work, the status updates immediately here.
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('complaints').doc(widget.job.id).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        
+
+        // Parse current data
         var data = snapshot.data!.data() as Map<String, dynamic>;
         ComplaintModel job = ComplaintModel.fromMap(data, widget.job.id);
 
@@ -100,6 +107,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // --- SECTION 1: STATUS HEADER ---
+                // Displays the current status prominently at the top
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
@@ -119,21 +127,23 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                 ),
 
                 // Show Admin Remarks if rejected/re-opened
+                // This informs the maintainer WHY the job was sent back to them
                 if (job.adminRemarks != null && job.adminRemarks!.isNotEmpty && (job.status == 'In Progress' || job.status == 'Invalid')) ...[
                   const SizedBox(height: 20),
                   _buildRejectionBox(
-                    job.status == 'Invalid' ? "Job Rejected by Admin" : "Re-opened by Admin", 
-                    job.adminRemarks!
+                      job.status == 'Invalid' ? "Job Rejected by Admin" : "Re-opened by Admin",
+                      job.adminRemarks!
                   ),
                 ],
 
                 const SizedBox(height: 24),
 
                 // --- SECTION 2: ISSUE DETAILS ---
+                // General information about the problem (Title, Priority, Description)
                 _buildSectionTitle("Issue Information"),
                 _buildInfoContainer([
                   _detailRow("Job Title", job.title),
-                  
+
                   // Pills Row (Priority & Category)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -148,7 +158,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                   ),
                   const Divider(height: 1, color: Colors.grey),
                   const SizedBox(height: 12),
-                  
+
                   // Description
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,6 +180,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                 const SizedBox(height: 24),
 
                 // --- SECTION 3: LOCATION & CONTACT ---
+                // Details on where to go and who to contact (Resident)
                 _buildSectionTitle("Location & Resident"),
                 _buildInfoContainer([
                   _detailRow("Building", job.building),
@@ -183,6 +194,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                 const SizedBox(height: 24),
 
                 // --- SECTION 4: EVIDENCE ---
+                // Shows any photos or videos attached by the resident
                 if (job.imageUrls.isNotEmpty || (job.videoUrl != null && job.videoUrl!.isNotEmpty)) ...[
                   _buildSectionTitle("Evidence Attached"),
                   _buildEvidenceContainer(job),
@@ -190,6 +202,9 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                 ],
 
                 // --- SECTION 5: ACTIONS / REPORT ---
+                // Dynamic section:
+                // 1. If 'In Progress': Show button to Submit Report (Finish Job)
+                // 2. If 'Pending Verification' or 'Resolved': Show the submitted report (Read Only)
                 if (job.status == 'In Progress') ...[
                   // ACTION BUTTON
                   _buildSectionTitle("Action Required"),
@@ -239,6 +254,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                 ],
 
                 // --- SECTION 6: RESIDENT FEEDBACK ---
+                // Show rating/review if the resident has provided one
                 if (job.rating > 0) ...[
                   const SizedBox(height: 24),
                   _buildSectionTitle("Resident Feedback"),
@@ -263,6 +279,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
     );
   }
 
+  // Wrapper for white info cards
   Widget _buildInfoContainer(List<Widget> children) {
     return Container(
       width: double.infinity,
@@ -280,6 +297,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
     );
   }
 
+  // Simple key-value row
   Widget _detailRow(String label, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -293,6 +311,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
     );
   }
 
+  // Colored text tag (chip)
   Widget _buildPill(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -305,6 +324,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
     );
   }
 
+  // Container for images and video
   Widget _buildEvidenceContainer(ComplaintModel job) {
     return Container(
       width: double.infinity,
@@ -334,7 +354,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.network(
-                        job.imageUrls[index], 
+                        job.imageUrls[index],
                         fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
@@ -352,13 +372,13 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
             const Row(children: [Icon(Icons.videocam_outlined, size: 18, color: Color(0xFF003366)), SizedBox(width: 8), Text("Video Evidence", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600))]),
             const SizedBox(height: 12),
             ClipRRect(
-              borderRadius: BorderRadius.circular(12), 
-              child: Container(
-                color: Colors.black12,
-                height: 200,
-                width: double.infinity,
-                child: SimpleVideoPlayer(videoUrl: job.videoUrl!)
-              )
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                    color: Colors.black12,
+                    height: 200,
+                    width: double.infinity,
+                    child: SimpleVideoPlayer(videoUrl: job.videoUrl!)
+                )
             ),
           ],
         ],
@@ -366,6 +386,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
     );
   }
 
+  // Red box for displaying rejection reasons
   Widget _buildRejectionBox(String title, String remarks) {
     return Container(
       width: double.infinity,
@@ -382,6 +403,7 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
     );
   }
 
+  // Amber box for displaying feedback
   Widget _buildFeedbackBox(ComplaintModel job) {
     return Container(
       width: double.infinity,
@@ -408,6 +430,9 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
     );
   }
 
+  // --- COMPLETION DIALOG ---
+  // Popup allows Maintainer to enter details about the work done.
+  // Updates the job status to 'Pending Verification'.
   void _showCompletionDialog(ComplaintModel job) {
     final findingsController = TextEditingController(text: job.findings);
     final actionController = TextEditingController(text: job.actionTaken);
@@ -436,13 +461,15 @@ class _MaintainerJobDetailState extends State<MaintainerJobDetail> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () async {
               if (findingsController.text.isEmpty) return;
+
+              // Call Service to update status and save report details
               await ComplaintService().resolveComplaint(
                 complaintId: job.id,
                 findings: findingsController.text,
                 actionTaken: actionController.text,
                 inspectionResult: resultController.text,
               );
-              if (mounted) { Navigator.pop(context); Navigator.pop(context); }
+              if (mounted) { Navigator.pop(context); Navigator.pop(context); } // Close Dialog & Screen
             },
             child: const Text("Submit", style: TextStyle(color: Colors.white)),
           ),

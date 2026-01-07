@@ -5,6 +5,8 @@ import '../../models/suggestion_model.dart';
 import '../../services/suggestion_service.dart';
 import '../../screens/suggestion/suggestion_detail_screen.dart';
 
+// Screen for Admins to view a list of all user suggestions/feedback.
+// Features include filtering by category, sorting by New/Unread, and marking items as read.
 class AdminSuggestionList extends StatefulWidget {
   const AdminSuggestionList({super.key});
 
@@ -13,8 +15,11 @@ class AdminSuggestionList extends StatefulWidget {
 }
 
 class _AdminSuggestionListState extends State<AdminSuggestionList> {
+  // --- STATE VARIABLES ---
+  // Tracks the currently selected filter category (defaults to 'All')
   String _selectedCategory = 'All';
 
+  // Hardcoded list of categories matching the ones users can select
   final List<String> _suggestionCategories = [
     'All',
     'Safety & Security',
@@ -25,6 +30,8 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
     'General'
   ];
 
+  // --- HELPER: CATEGORY COLORS ---
+  // Returns a specific color based on the suggestion category for visual distinction
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Safety & Security': return Colors.red;
@@ -36,6 +43,8 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
     }
   }
 
+  // --- HELPER: CATEGORY ICONS ---
+  // Returns a specific icon based on the suggestion category
   IconData _getCategoryIcon(String category) {
     switch (category) {
       case 'Safety & Security': return Icons.security;
@@ -49,19 +58,24 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
 
   @override
   Widget build(BuildContext context) {
+    // StreamProvider listens to the stream of all suggestions from Firestore.
+    // This ensures the list updates in real-time when new feedback arrives.
     return StreamProvider<List<SuggestionModel>>.value(
       value: SuggestionService().allSuggestions,
       initialData: const [],
       child: Consumer<List<SuggestionModel>>(
         builder: (context, suggestions, child) {
-          
+
           // 1. FILTER LOGIC
+          // Create a new list containing only items matching the selected category
           List<SuggestionModel> filteredList = suggestions.where((item) {
             if (_selectedCategory == 'All') return true;
             return item.category == _selectedCategory;
           }).toList();
 
-          // 2. SORT LOGIC: Unread first, then by Date (Newest first)
+          // 2. SORT LOGIC
+          // Custom sort: Unread ('isRead' is false) items appear at the top.
+          // Secondary sort: Newest timestamp first.
           filteredList.sort((a, b) {
             if (a.isRead != b.isRead) {
               return a.isRead ? 1 : -1; // Unread comes first
@@ -80,7 +94,7 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Stats Text
+                      // Stats Text (shows count of filtered items)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -94,13 +108,13 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                             ),
                           ),
                           Text(
-                            "${filteredList.length} Items", 
-                            style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.bold)
+                              "${filteredList.length} Items",
+                              style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.bold)
                           ),
                         ],
                       ),
 
-                      // CLEAN DROPDOWN
+                      // CLEAN DROPDOWN FOR FILTERING
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                         decoration: BoxDecoration(
@@ -116,7 +130,7 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                             borderRadius: BorderRadius.circular(12),
                             items: _suggestionCategories.map((String c) {
                               return DropdownMenuItem<String>(
-                                value: c, 
+                                value: c,
                                 child: Text(c),
                               );
                             }).toList(),
@@ -127,7 +141,7 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                     ],
                   ),
                 ),
-                
+
                 const Divider(height: 1),
 
                 // --- LIST VIEW ---
@@ -135,12 +149,12 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                   child: filteredList.isEmpty
                       ? _buildEmptyState()
                       : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filteredList.length,
-                          itemBuilder: (context, index) {
-                            return _buildSuggestionItem(context, filteredList[index]);
-                          },
-                        ),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredList.length,
+                    itemBuilder: (context, index) {
+                      return _buildSuggestionItem(context, filteredList[index]);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -150,6 +164,8 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
     );
   }
 
+  // --- EMPTY STATE ---
+  // Displayed when there are no suggestions matching the filter.
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -167,29 +183,33 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
     );
   }
 
-  // Wrapper for Swipe-to-Dismiss + Card
+  // --- ITEM BUILDER (With Swipe Actions) ---
+  // Wraps the card in a Dismissible widget so Admins can swipe to "Mark as Read".
   Widget _buildSuggestionItem(BuildContext context, SuggestionModel item) {
-    // Only allow swiping if it's unread
-    return item.isRead 
-      ? _buildSuggestionCard(context, item)
-      : Dismissible(
-          key: Key(item.id),
-          direction: DismissDirection.startToEnd,
-          background: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(12)),
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.only(left: 20),
-            child: const Row(children: [Icon(Icons.check, color: Colors.white), SizedBox(width: 10), Text("Mark Read", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
-          ),
-          onDismissed: (direction) {
-            SuggestionService().markAsRead(item.id);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Marked as Read"), duration: Duration(milliseconds: 700)));
-          },
-          child: _buildSuggestionCard(context, item),
-        );
+    // Only allow swiping if it's currently unread
+    return item.isRead
+        ? _buildSuggestionCard(context, item)
+        : Dismissible(
+      key: Key(item.id),
+      direction: DismissDirection.startToEnd, // Swipe Left-to-Right
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(12)),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 20),
+        child: const Row(children: [Icon(Icons.check, color: Colors.white), SizedBox(width: 10), Text("Mark Read", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
+      ),
+      onDismissed: (direction) {
+        // Call service to update 'isRead' in Firestore
+        SuggestionService().markAsRead(item.id);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Marked as Read"), duration: Duration(milliseconds: 700)));
+      },
+      child: _buildSuggestionCard(context, item),
+    );
   }
 
+  // --- MAIN CARD UI ---
+  // Displays the content of the suggestion.
   Widget _buildSuggestionCard(BuildContext context, SuggestionModel item) {
     final catColor = _getCategoryColor(item.category);
     final catIcon = _getCategoryIcon(item.category);
@@ -202,7 +222,7 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
         ],
-        // Blue border for Unread items
+        // Highlights Unread items with a subtle blue border
         border: !item.isRead ? Border.all(color: const Color(0xFF003366).withOpacity(0.3), width: 1.5) : null,
       ),
       child: Material(
@@ -210,7 +230,9 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
+            // Mark as read when opened
             if (!item.isRead) SuggestionService().markAsRead(item.id);
+            // Navigate to full details
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => SuggestionDetailScreen(suggestion: item)),
@@ -221,6 +243,7 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Top Row: Icon + Category + Date
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -234,7 +257,7 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                       child: Icon(catIcon, color: catColor, size: 22),
                     ),
                     const SizedBox(width: 16),
-                    
+
                     // Text Content
                     Expanded(
                       child: Column(
@@ -256,8 +279,8 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                             ],
                           ),
                           const SizedBox(height: 6),
-                          
-                          // Title
+
+                          // Title (Bold if unread)
                           Text(
                             item.title,
                             style: TextStyle(
@@ -269,10 +292,10 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          
+
                           const SizedBox(height: 4),
-                          
-                          // Subtitle (Name)
+
+                          // Subtitle (Submitter Name)
                           Row(
                             children: [
                               Icon(Icons.person, size: 12, color: Colors.grey[400]),
@@ -286,8 +309,8 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                         ],
                       ),
                     ),
-                    
-                    // New Badge or Arrow
+
+                    // Right Side: "NEW" Badge or Arrow
                     const SizedBox(width: 12),
                     if (!item.isRead)
                       Container(
@@ -305,8 +328,8 @@ class _AdminSuggestionListState extends State<AdminSuggestionList> {
                       const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
                   ],
                 ),
-                
-                // Preview Text (Optional)
+
+                // Description Preview (Optional)
                 if (item.description.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(height: 1),

@@ -3,13 +3,16 @@ import '../../models/user_model.dart';
 import '../../services/database_service.dart';
 import 'create_maintainer_screen.dart';
 
+// Screen for Admins to view and manage the staff workforce.
+// It uses a TabController to switch between "Active" staff (currently working)
+// and "Archived" staff (disabled accounts).
 class ManageMaintainersScreen extends StatelessWidget {
   const ManageMaintainersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 2, // Two tabs: Active & Archived
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F7FA), // Light Grey Background
         appBar: AppBar(
@@ -29,6 +32,7 @@ class ManageMaintainersScreen extends StatelessWidget {
             icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF003366), size: 20),
             onPressed: () => Navigator.pop(context),
           ),
+          // --- TAB BAR CONFIGURATION ---
           bottom: const TabBar(
             labelColor: Color(0xFF003366),
             unselectedLabelColor: Colors.grey,
@@ -41,12 +45,14 @@ class ManageMaintainersScreen extends StatelessWidget {
             ],
           ),
         ),
+        // --- TAB CONTENT ---
         body: const TabBarView(
           children: [
-            _MaintainerList(isActive: true),
-            _MaintainerList(isActive: false),
+            _MaintainerList(isActive: true),  // Tab 1: Active
+            _MaintainerList(isActive: false), // Tab 2: Archived
           ],
         ),
+        // --- FAB: REGISTER NEW STAFF ---
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: const Color(0xFF003366),
           elevation: 4,
@@ -64,6 +70,8 @@ class ManageMaintainersScreen extends StatelessWidget {
   }
 }
 
+// --- REUSABLE LIST WIDGET ---
+// Handles fetching data and search functionality for both Active/Archived tabs.
 class _MaintainerList extends StatefulWidget {
   final bool isActive;
   const _MaintainerList({required this.isActive});
@@ -73,10 +81,11 @@ class _MaintainerList extends StatefulWidget {
 }
 
 class _MaintainerListState extends State<_MaintainerList> {
-  String _searchQuery = "";
+  String _searchQuery = ""; // Stores user input for filtering
 
   @override
   Widget build(BuildContext context) {
+    // Select the appropriate stream based on the tab (Active vs Archived)
     Stream<List<UserModel>> stream = widget.isActive
         ? DatabaseService().maintainers
         : DatabaseService().archivedMaintainers;
@@ -85,10 +94,11 @@ class _MaintainerListState extends State<_MaintainerList> {
       stream: stream,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        
+
         var allStaff = snapshot.data!;
-        
+
         // --- CLIENT-SIDE SEARCH LOGIC ---
+        // Filters the list based on Name or Specialization matching the search query
         var filteredStaff = allStaff.where((staff) {
           final name = staff.fullName?.toLowerCase() ?? "";
           final spec = staff.specialization?.toLowerCase() ?? "";
@@ -130,12 +140,12 @@ class _MaintainerListState extends State<_MaintainerList> {
               child: filteredStaff.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: filteredStaff.length,
-                      itemBuilder: (context, index) {
-                        return _buildStaffCard(context, filteredStaff[index]);
-                      },
-                    ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: filteredStaff.length,
+                itemBuilder: (context, index) {
+                  return _buildStaffCard(context, filteredStaff[index]);
+                },
+              ),
             ),
           ],
         );
@@ -143,6 +153,7 @@ class _MaintainerListState extends State<_MaintainerList> {
     );
   }
 
+  // Displayed when search yields no results or list is empty
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -159,10 +170,13 @@ class _MaintainerListState extends State<_MaintainerList> {
     );
   }
 
+  // --- STAFF CARD UI ---
+  // Displays individual staff details and action menu
   Widget _buildStaffCard(BuildContext context, UserModel staff) {
     String specialization = staff.specialization ?? "General";
-    
-    // Color coding for specialization pills
+
+    // --- COLOR CODING LOGIC ---
+    // Assigns distinct colors to pills based on specialization text
     Color pillColor = Colors.blue;
     if (specialization.contains("Plumb")) pillColor = Colors.cyan;
     else if (specialization.contains("Elect")) pillColor = Colors.amber.shade700;
@@ -181,10 +195,11 @@ class _MaintainerListState extends State<_MaintainerList> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
+            // Left border strip indicates Active vs Archived status visually
             border: Border(
               left: BorderSide(
-                color: widget.isActive ? const Color(0xFF003366) : Colors.grey, 
-                width: 4
+                  color: widget.isActive ? const Color(0xFF003366) : Colors.grey,
+                  width: 4
               ),
             ),
           ),
@@ -205,12 +220,13 @@ class _MaintainerListState extends State<_MaintainerList> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                
-                // 2. INFO
+
+                // 2. INFO COLUMN
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Name
                       Text(
                         staff.fullName ?? "Unknown Name",
                         style: TextStyle(
@@ -221,9 +237,10 @@ class _MaintainerListState extends State<_MaintainerList> {
                         ),
                       ),
                       const SizedBox(height: 4),
+
+                      // Specialization Pill
                       Row(
                         children: [
-                          // Specialization Pill
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
@@ -238,7 +255,7 @@ class _MaintainerListState extends State<_MaintainerList> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      
+
                       // Email with Icon
                       Row(
                         children: [
@@ -246,14 +263,14 @@ class _MaintainerListState extends State<_MaintainerList> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              staff.email, 
+                              staff.email,
                               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      
+
                       // Contact with Icon (NEW ADDITION)
                       const SizedBox(height: 2),
                       Row(
@@ -261,7 +278,7 @@ class _MaintainerListState extends State<_MaintainerList> {
                           Icon(Icons.phone_outlined, size: 12, color: Colors.grey.shade500),
                           const SizedBox(width: 4),
                           Text(
-                            staff.contactNumber ?? "No Contact", 
+                            staff.contactNumber ?? "No Contact",
                             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                           ),
                         ],
@@ -270,7 +287,7 @@ class _MaintainerListState extends State<_MaintainerList> {
                   ),
                 ),
 
-                // 3. ACTIONS MENU
+                // 3. ACTIONS MENU (Three dots)
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, color: Colors.grey),
                   color: Colors.white,
@@ -291,10 +308,10 @@ class _MaintainerListState extends State<_MaintainerList> {
                       value: 'toggle',
                       child: Row(
                         children: [
-                          Icon(widget.isActive ? Icons.archive : Icons.restore, 
-                               size: 18, 
-                               color: widget.isActive ? Colors.orange : Colors.green), 
-                          const SizedBox(width: 10), 
+                          Icon(widget.isActive ? Icons.archive : Icons.restore,
+                              size: 18,
+                              color: widget.isActive ? Colors.orange : Colors.green),
+                          const SizedBox(width: 10),
                           Text(widget.isActive ? "Archive Staff" : "Restore Staff")
                         ],
                       ),
@@ -309,6 +326,7 @@ class _MaintainerListState extends State<_MaintainerList> {
     );
   }
 
+  // Helper to extract initials from name (e.g. "John Doe" -> "JD")
   String _getInitials(String? name) {
     if (name == null || name.isEmpty) return "?";
     List<String> parts = name.trim().split(" ");
@@ -316,8 +334,8 @@ class _MaintainerListState extends State<_MaintainerList> {
     return parts[0][0].toUpperCase();
   }
 
-  // --- DIALOGS ---
-
+  // --- DIALOG: EDIT STAFF ---
+  // Allows updating Name, Phone, and Role without changing Auth credentials
   void _showEditDialog(BuildContext context, UserModel staff) {
     final nameCtrl = TextEditingController(text: staff.fullName);
     final phoneCtrl = TextEditingController(text: staff.contactNumber);
@@ -327,77 +345,80 @@ class _MaintainerListState extends State<_MaintainerList> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            title: const Text("Edit Staff Details", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: InputDecoration(
-                      labelText: "Full Name", 
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.person_outline),
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              title: const Text("Edit Staff Details", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: InputDecoration(
+                        labelText: "Full Name",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.person_outline),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  TextField(
-                    controller: phoneCtrl,
-                    decoration: InputDecoration(
-                      labelText: "Contact Number", 
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.phone_outlined),
+                    const SizedBox(height: 15),
+                    TextField(
+                      controller: phoneCtrl,
+                      decoration: InputDecoration(
+                        labelText: "Contact Number",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
                     ),
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 15),
-                  DropdownButtonFormField<String>(
-                    value: specs.contains(spec) ? spec : 'General',
-                    decoration: InputDecoration(
-                      labelText: "Specialization", 
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.work_outline),
+                    const SizedBox(height: 15),
+                    DropdownButtonFormField<String>(
+                      value: specs.contains(spec) ? spec : 'General',
+                      decoration: InputDecoration(
+                        labelText: "Specialization",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.work_outline),
+                      ),
+                      items: specs.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                      onChanged: (val) => setState(() => spec = val!),
                     ),
-                    items: specs.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                    onChanged: (val) => setState(() => spec = val!),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF003366), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                child: const Text("Save Changes", style: TextStyle(color: Colors.white)),
-                onPressed: () async {
-                  await DatabaseService().updateMaintainerDetails(
-                    uid: staff.uid,
-                    fullName: nameCtrl.text,
-                    contactNumber: phoneCtrl.text,
-                    specialization: spec,
-                  );
-                  if (context.mounted) Navigator.pop(context);
-                },
-              ),
-            ],
-          );
-        }
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF003366), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                  child: const Text("Save Changes", style: TextStyle(color: Colors.white)),
+                  onPressed: () async {
+                    // Call Database Service to update fields
+                    await DatabaseService().updateMaintainerDetails(
+                      uid: staff.uid,
+                      fullName: nameCtrl.text,
+                      contactNumber: phoneCtrl.text,
+                      specialization: spec,
+                    );
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          }
       ),
     );
   }
 
+  // --- DIALOG: CONFIRM ARCHIVE/RESTORE ---
+  // Switches the 'isApproved' flag to disable/enable the account.
   void _confirmToggleStatus(BuildContext context, UserModel staff) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: Text(widget.isActive ? "Archive Staff?" : "Restore Staff?", style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        content: Text(widget.isActive 
-          ? "This will remove ${staff.fullName} from the active assignment list. They will not be able to receive new jobs." 
-          : "This will reactivate ${staff.fullName} for new assignments."),
+        content: Text(widget.isActive
+            ? "This will remove ${staff.fullName} from the active assignment list. They will not be able to receive new jobs."
+            : "This will reactivate ${staff.fullName} for new assignments."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(

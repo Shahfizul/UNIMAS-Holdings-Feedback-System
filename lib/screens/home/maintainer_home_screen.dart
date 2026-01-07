@@ -10,10 +10,12 @@ import '../../services/complaint_service.dart';
 import '../../services/notification_service.dart';
 
 // Screens & Widgets
-import '../complaint/maintainer_job_detail.dart'; 
+import '../complaint/maintainer_job_detail.dart';
 import '../../widgets/notification_badge.dart';
 import '../home/user_profile_page.dart';
 
+// The main dashboard for Maintainer (Staff) users.
+// Displays assigned jobs categorized into tabs: Active, Pending Verification, and History.
 class MaintainerHomeScreen extends StatefulWidget {
   const MaintainerHomeScreen({super.key});
 
@@ -25,6 +27,8 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize Notification Service when screen loads.
+    // This allows the app to request permission and save the FCM token for push notifications.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = Provider.of<UserModel?>(context, listen: false);
       if (user != null) {
@@ -33,6 +37,7 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
     });
   }
 
+  // --- LOGOUT DIALOG ---
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -65,23 +70,26 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel?>(context);
 
+    // Safety check: show loader if user data isn't ready
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    // StreamProvider listens to the list of complaints assigned SPECIFICALLY to this maintainer.
+    // Any changes in Firestore (new assignment, status update) will automatically update the UI.
     return StreamProvider<List<ComplaintModel>>.value(
       value: ComplaintService().getAssignedComplaints(user.uid),
       initialData: const [],
       child: DefaultTabController(
         length: 3, // 3 Tabs: Active, Pending, History
         child: Scaffold(
-          backgroundColor: const Color(0xFFF5F7FA),
+          backgroundColor: const Color(0xFFF5F7FA), // Light grey background
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 0.5,
             centerTitle: true,
-            
-            // --- 1. ORIGINAL PROFILE ICON RESTORED ---
+
+            // --- 1. PROFILE MENU (LEFT SIDE) ---
             leading: Padding(
               padding: const EdgeInsets.only(left: 8.0),
               child: PopupMenuButton<String>(
@@ -126,7 +134,7 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
                 ],
               ),
             ),
-            
+
             title: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -150,11 +158,13 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
               ],
             ),
             actions: [
+              // Notification Badge (Top Right)
               Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: NotificationBadge(userId: user.uid),
               ),
             ],
+            // --- TAB BAR ---
             bottom: const TabBar(
               labelColor: Color(0xFF003366),
               unselectedLabelColor: Colors.grey,
@@ -162,12 +172,13 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
               indicatorWeight: 3,
               labelStyle: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12),
               tabs: [
-                Tab(text: "Active"),   // In Progress
-                Tab(text: "Pending"),  // Verify / Waiting
-                Tab(text: "History"),  // Done
+                Tab(text: "Active"),   // Jobs currently 'In Progress'
+                Tab(text: "Pending"),  // Jobs waiting for 'Verification' from Admin
+                Tab(text: "History"),  // Completed or Invalid jobs
               ],
             ),
           ),
+          // --- TAB VIEWS ---
           body: const TabBarView(
             children: [
               JobTabList(tabType: 'active'),
@@ -182,8 +193,9 @@ class _MaintainerHomeScreenState extends State<MaintainerHomeScreen> {
 }
 
 // --- JOB LIST COMPONENT ---
+// Reusable widget to display a list of jobs filtered by the current tab.
 class JobTabList extends StatefulWidget {
-  final String tabType; 
+  final String tabType;
   const JobTabList({super.key, required this.tabType});
 
   @override
@@ -191,12 +203,13 @@ class JobTabList extends StatefulWidget {
 }
 
 class _JobTabListState extends State<JobTabList> {
+  // Local state for sorting and filtering within this tab
   String _sortBy = 'Latest';
   String _priorityFilter = 'All';
 
-  // --- COLOR HELPERS (Your Rules) ---
+  // --- COLOR HELPERS (UI Logic) ---
   Color _getStatusColor(String status) {
-    if (status == 'Pending') return Colors.orange; // or Yellow
+    if (status == 'Pending') return Colors.orange;
     if (status == 'In Progress') return Colors.blue;
     if (status == 'Pending Verification') return Colors.purple;
     if (status == 'Resolved') return Colors.green;
@@ -206,11 +219,12 @@ class _JobTabListState extends State<JobTabList> {
 
   Color _getPriorityColor(String priority) {
     if (priority == 'High') return Colors.red;
-    if (priority == 'Medium') return Colors.orange; 
+    if (priority == 'Medium') return Colors.orange;
     if (priority == 'Low') return Colors.green;
     return Colors.grey;
   }
 
+  // --- SORT & FILTER MODAL ---
   void _showSortOptions() {
     showModalBottomSheet(
       context: context,
@@ -226,7 +240,8 @@ class _JobTabListState extends State<JobTabList> {
               children: [
                 const Text("Sort & Filter", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16)),
                 const Divider(),
-                
+
+                // Sorting Options
                 const Text("Date Order", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 8),
                 Row(
@@ -248,9 +263,10 @@ class _JobTabListState extends State<JobTabList> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 20),
 
+                // Priority Filter Options
                 const Text("Priority Level", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 8),
                 Wrap(
@@ -261,8 +277,8 @@ class _JobTabListState extends State<JobTabList> {
                       selected: _priorityFilter == p,
                       selectedColor: _getPriorityColor(p).withOpacity(0.2),
                       labelStyle: TextStyle(
-                        color: _priorityFilter == p ? _getPriorityColor(p) : Colors.black,
-                        fontWeight: _priorityFilter == p ? FontWeight.bold : FontWeight.normal
+                          color: _priorityFilter == p ? _getPriorityColor(p) : Colors.black,
+                          fontWeight: _priorityFilter == p ? FontWeight.bold : FontWeight.normal
                       ),
                       onSelected: (s) { setState(() => _priorityFilter = p); setModalState(() {}); },
                     );
@@ -279,31 +295,33 @@ class _JobTabListState extends State<JobTabList> {
 
   @override
   Widget build(BuildContext context) {
+    // Get full list of jobs from Provider (passed down from parent StreamProvider)
     final allJobs = Provider.of<List<ComplaintModel>>(context);
-    
-    // 1. Filter by Tab
+
+    // 1. FILTER BY TAB TYPE
     List<ComplaintModel> filteredJobs;
     if (widget.tabType == 'active') {
       filteredJobs = allJobs.where((job) => job.status == 'In Progress').toList();
     } else if (widget.tabType == 'pending_verification') {
       filteredJobs = allJobs.where((job) => job.status == 'Pending Verification').toList();
     } else {
+      // History includes Resolved and Invalid jobs
       filteredJobs = allJobs.where((job) => job.status == 'Resolved' || job.status == 'Invalid').toList();
     }
 
-    // 2. Filter by Priority
+    // 2. FILTER BY PRIORITY (if selected)
     if (_priorityFilter != "All") {
       filteredJobs = filteredJobs.where((job) => job.priority == _priorityFilter).toList();
     }
 
-    // 3. Sort
-    filteredJobs.sort((a, b) => _sortBy == 'Latest' 
-      ? b.timestamp.compareTo(a.timestamp) 
-      : a.timestamp.compareTo(b.timestamp));
+    // 3. SORT BY DATE
+    filteredJobs.sort((a, b) => _sortBy == 'Latest'
+        ? b.timestamp.compareTo(a.timestamp)
+        : a.timestamp.compareTo(b.timestamp));
 
     return Column(
       children: [
-        // --- FILTER BUTTON ---
+        // --- FILTER BUTTON BAR ---
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           color: Colors.white,
@@ -318,13 +336,13 @@ class _JobTabListState extends State<JobTabList> {
               ),
               const Spacer(),
               Text(
-                "${filteredJobs.length} tasks", 
-                style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
+                  "${filteredJobs.length} tasks",
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
               ),
             ],
           ),
         ),
-        
+
         const Divider(height: 1),
 
         // --- LIST VIEW ---
@@ -332,15 +350,16 @@ class _JobTabListState extends State<JobTabList> {
           child: filteredJobs.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredJobs.length,
-                  itemBuilder: (context, index) => _buildJobCard(context, filteredJobs[index]),
-                ),
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredJobs.length,
+            itemBuilder: (context, index) => _buildJobCard(context, filteredJobs[index]),
+          ),
         ),
       ],
     );
   }
 
+  // Displayed when the list is empty for the current filter
   Widget _buildEmptyState() {
     IconData icon = Icons.check_circle_outline;
     String message = "No jobs found.";
@@ -368,6 +387,8 @@ class _JobTabListState extends State<JobTabList> {
     );
   }
 
+  // --- JOB CARD COMPONENT ---
+  // Renders a single job item in the list.
   Widget _buildJobCard(BuildContext context, ComplaintModel job) {
     Color statusColor = _getStatusColor(job.status);
     Color priorityColor = _getPriorityColor(job.priority);
@@ -389,6 +410,7 @@ class _JobTabListState extends State<JobTabList> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
+        // Navigate to Job Detail on tap
         onTap: () {
           Navigator.push(
             context,
@@ -421,23 +443,23 @@ class _JobTabListState extends State<JobTabList> {
                   Icon(Icons.more_horiz, color: Colors.grey[400], size: 20),
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Row 2: Title
               Text(
-                job.title, 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Poppins'),
-                maxLines: 1, 
-                overflow: TextOverflow.ellipsis
+                  job.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Poppins'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis
               ),
-              
+
               const SizedBox(height: 8),
 
               // Row 3: Priority & Category Pills
               Row(
                 children: [
-                  // Priority
+                  // Priority Pill
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -446,13 +468,13 @@ class _JobTabListState extends State<JobTabList> {
                       border: Border.all(color: priorityColor.withOpacity(0.3)),
                     ),
                     child: Text(
-                      "${job.priority} Priority", 
+                      "${job.priority} Priority",
                       style: TextStyle(color: priorityColor, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  
-                  // Category
+
+                  // Category Pill
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -465,7 +487,7 @@ class _JobTabListState extends State<JobTabList> {
                         Icon(Icons.category, size: 10, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Text(
-                          job.category, 
+                          job.category,
                           style: TextStyle(color: Colors.grey[700], fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -490,7 +512,7 @@ class _JobTabListState extends State<JobTabList> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  
+
                   Text(
                     DateFormat('dd MMM yyyy').format(job.timestamp),
                     style: TextStyle(fontSize: 11, color: Colors.grey[500]),

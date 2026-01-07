@@ -5,6 +5,8 @@ import '../../models/complaint_model.dart';
 import '../../services/complaint_service.dart';
 import '../complaint/complaint_detail_screen.dart';
 
+// Widget that displays a list of complaints filtered by status (Tabs).
+// Used in the Admin Dashboard to show 'Pending', 'Progress', 'Verify', and 'History' lists.
 class AdminComplaintList extends StatefulWidget {
   final String filterType; // 'pending', 'in_progress', 'verify', 'history'
   const AdminComplaintList({super.key, required this.filterType});
@@ -15,23 +17,27 @@ class AdminComplaintList extends StatefulWidget {
 
 class _AdminComplaintListState extends State<AdminComplaintList> {
   // --- STATE VARIABLES ---
-  String _sortBy = 'Latest'; 
-  String _priorityFilter = 'All'; 
+  // These control the local filtering and sorting within this specific tab
+  String _sortBy = 'Latest';
+  String _priorityFilter = 'All';
   String _selectedBuilding = 'All';
   String _selectedCategory = 'All';
 
+  // Hardcoded categories for the filter dropdown logic
   final List<String> _standardCategories = [
     'Furniture', 'Mechanical', 'Electrical', 'Plumbing/Sink', 'Waste Water', 'Wi-Fi'
   ];
 
   // --- UNIFIED FILTER MODAL ---
+  // Opens a bottom sheet allowing the Admin to apply multiple filters at once.
   void _showFilterModal(List<String> buildings, List<String> categories) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      isScrollControlled: true, // Allows the sheet to be taller
+      isScrollControlled: true, // Allows the sheet to take up more screen height
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
+        // Use StatefulBuilder to update the modal's UI internally when chips are clicked
         return StatefulBuilder(builder: (context, setModalState) {
           return Container(
             padding: const EdgeInsets.all(24),
@@ -39,35 +45,36 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
+                // Header Row with Reset Button
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text("Filter & Sort", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 18)),
                     TextButton(
                       onPressed: () {
-                        // Reset Logic
+                        // Reset all filters to default
                         setState(() {
                           _sortBy = 'Latest';
                           _priorityFilter = 'All';
                           _selectedBuilding = 'All';
                           _selectedCategory = 'All';
                         });
-                        setModalState(() {});
-                        Navigator.pop(context);
+                        setModalState(() {}); // Update Modal UI
+                        Navigator.pop(context); // Close Modal
                       },
                       child: const Text("Reset All", style: TextStyle(color: Colors.red)),
                     )
                   ],
                 ),
                 const Divider(),
-                
+
+                // Scrollable content for filter options
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 1. DATE ORDER
+                        // 1. SORT ORDER
                         _buildFilterSectionHeader("Sort Order"),
                         Wrap(
                           spacing: 8,
@@ -78,7 +85,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                         ),
                         const SizedBox(height: 24),
 
-                        // 2. PRIORITY
+                        // 2. PRIORITY LEVEL
                         _buildFilterSectionHeader("Priority Level"),
                         Wrap(
                           spacing: 8,
@@ -88,7 +95,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                         ),
                         const SizedBox(height: 24),
 
-                        // 3. PROPERTY (Now inside modal)
+                        // 3. PROPERTY / BUILDING
                         _buildFilterSectionHeader("Property / Building"),
                         Wrap(
                           spacing: 8,
@@ -99,7 +106,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                         ),
                         const SizedBox(height: 24),
 
-                        // 4. CATEGORY (Now inside modal)
+                        // 4. CATEGORY
                         _buildFilterSectionHeader("Category"),
                         Wrap(
                           spacing: 8,
@@ -113,8 +120,8 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                     ),
                   ),
                 ),
-                
-                // Apply Button
+
+                // Apply Button (Closes modal)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -135,7 +142,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
     );
   }
 
-  // Helper for Modal Chips
+  // Helper Widget for clickable filter chips in the modal
   Widget _buildModalChip(String label, bool isSelected, VoidCallback onTap) {
     return ChoiceChip(
       label: Text(label),
@@ -171,47 +178,52 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
 
   @override
   Widget build(BuildContext context) {
+    // Access global complaint list from Provider
     final allComplaints = Provider.of<List<ComplaintModel>>(context);
 
     // --- 1. FILTER LOGIC ---
+    // Apply multiple layers of filters to the raw list
     List<ComplaintModel> filteredList = allComplaints.where((job) {
-      // Tab Logic
+      // Layer 1: Filter by Tab (Pending/Progress/Verify/History)
       bool tabMatch = false;
       if (widget.filterType == 'pending') tabMatch = job.status == 'Pending';
       else if (widget.filterType == 'in_progress') tabMatch = job.status == 'In Progress';
       else if (widget.filterType == 'verify') tabMatch = job.status == 'Pending Verification';
       else tabMatch = job.status == 'Resolved' || job.status == 'Invalid';
 
-      // Dropdown Logic
+      // Layer 2: Building Filter
       bool buildingMatch = _selectedBuilding == 'All' || job.building == _selectedBuilding;
-      
+
+      // Layer 3: Category Filter
       bool categoryMatch = false;
       if (_selectedCategory == 'All') categoryMatch = true;
       else if (_selectedCategory == 'Other') categoryMatch = !_standardCategories.contains(job.category);
       else categoryMatch = job.category == _selectedCategory;
 
+      // Layer 4: Priority Filter
       bool priorityMatch = _priorityFilter == 'All' || job.priority == _priorityFilter;
 
       return tabMatch && buildingMatch && categoryMatch && priorityMatch;
     }).toList();
 
-    // Sort Logic
-    filteredList.sort((a, b) => _sortBy == 'Latest' 
-      ? b.timestamp.compareTo(a.timestamp) 
-      : a.timestamp.compareTo(b.timestamp));
+    // --- 2. SORT LOGIC ---
+    filteredList.sort((a, b) => _sortBy == 'Latest'
+        ? b.timestamp.compareTo(a.timestamp)
+        : a.timestamp.compareTo(b.timestamp));
 
-    // Dynamic Lists for Modal
+    // --- 3. PREPARE DYNAMIC LISTS FOR MODAL ---
+    // Extract unique buildings from data to populate dropdown
     final List<String> buildings = ['All'];
     buildings.addAll(allComplaints.map((e) => e.building ?? 'Unknown').whereType<String>().toSet());
     final List<String> categories = ['All', ..._standardCategories, 'Other'];
 
-    // Check if any filter is active
+    // Check if any custom filter is active (to show visual indicators)
     bool isFiltered = _priorityFilter != 'All' || _selectedBuilding != 'All' || _selectedCategory != 'All';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- TOP CONTROLS ---
+        // --- TOP CONTROLS BAR ---
         Container(
           color: Colors.white,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -237,7 +249,8 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                             const SizedBox(width: 8),
                             const Text("Filters & Sort", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                             const Spacer(),
-                            if (isFiltered) 
+                            // Red dot indicator if filters are active
+                            if (isFiltered)
                               Container(
                                 width: 8, height: 8,
                                 decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
@@ -250,14 +263,16 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // Count Display
                   Text(
-                    "${filteredList.length} tasks", 
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
+                      "${filteredList.length} tasks",
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
                   ),
                 ],
               ),
-              
+
               // --- ACTIVE FILTER CHIPS (Visual Feedback) ---
+              // Shows small pills for active filters, allowing quick removal
               if (isFiltered) ...[
                 const SizedBox(height: 12),
                 SingleChildScrollView(
@@ -266,22 +281,22 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                     children: [
                       if (_priorityFilter != 'All')
                         _buildActiveFilterChip("Priority: $_priorityFilter", () => setState(() => _priorityFilter = 'All')),
-                      
+
                       if (_selectedBuilding != 'All')
                         _buildActiveFilterChip("Prop: $_selectedBuilding", () => setState(() => _selectedBuilding = 'All')),
-                      
+
                       if (_selectedCategory != 'All')
                         _buildActiveFilterChip("Cat: $_selectedCategory", () => setState(() => _selectedCategory = 'All')),
-                        
+
                       TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _priorityFilter = 'All';
-                            _selectedBuilding = 'All';
-                            _selectedCategory = 'All';
-                          });
-                        }, 
-                        child: const Text("Clear All", style: TextStyle(fontSize: 11, color: Colors.red))
+                          onPressed: () {
+                            setState(() {
+                              _priorityFilter = 'All';
+                              _selectedBuilding = 'All';
+                              _selectedCategory = 'All';
+                            });
+                          },
+                          child: const Text("Clear All", style: TextStyle(fontSize: 11, color: Colors.red))
                       )
                     ],
                   ),
@@ -290,7 +305,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
             ],
           ),
         ),
-        
+
         const Divider(height: 1),
 
         // --- LIST VIEW ---
@@ -298,17 +313,18 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
           child: filteredList.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: filteredList.length,
-                  itemBuilder: (context, index) {
-                    return _buildAdminCard(context, filteredList[index]);
-                  },
-                ),
+            padding: const EdgeInsets.all(12),
+            itemCount: filteredList.length,
+            itemBuilder: (context, index) {
+              return _buildAdminCard(context, filteredList[index]);
+            },
+          ),
         ),
       ],
     );
   }
 
+  // Small pill widget showing an active filter with 'X' to remove
   Widget _buildActiveFilterChip(String label, VoidCallback onRemove) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
@@ -331,6 +347,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
     );
   }
 
+  // Displayed when the list is empty
   Widget _buildEmptyState() {
     String message = "No tasks found";
     IconData icon = Icons.assignment_turned_in_outlined;
@@ -355,10 +372,12 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
     );
   }
 
+  // Renders a single complaint card
   Widget _buildAdminCard(BuildContext context, ComplaintModel job) {
     Color statusColor = Colors.grey;
     IconData statusIcon = Icons.info;
 
+    // Determine visual style based on status
     switch (job.status) {
       case 'Pending': statusColor = Colors.orange; statusIcon = Icons.hourglass_empty; break;
       case 'In Progress': statusColor = Colors.blue; statusIcon = Icons.build; break;
@@ -372,18 +391,20 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
       margin: const EdgeInsets.only(bottom: 12),
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.grey.shade200, width: 1)
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: Colors.grey.shade200, width: 1)
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: () {
+          // Navigate to Details Screen
           Navigator.push(context, MaterialPageRoute(builder: (context) => ComplaintDetailScreen(complaint: job)));
         },
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
             children: [
+              // Row 1: Icon, Title, Priority, Category
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -398,10 +419,10 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          job.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Poppins'),
-                          maxLines: 1, 
-                          overflow: TextOverflow.ellipsis
+                            job.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Poppins'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis
                         ),
                         const SizedBox(height: 6),
                         Row(
@@ -436,16 +457,17 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                 ],
               ),
               const SizedBox(height: 10),
+              // Row 2: Location & Date
               Row(
                 children: [
                   Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
                   const SizedBox(width: 4),
                   Expanded(
-                    child: Text(
-                      "${job.building}, ${job.roomNumber}", 
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      overflow: TextOverflow.ellipsis
-                    )
+                      child: Text(
+                          "${job.building}, ${job.roomNumber}",
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          overflow: TextOverflow.ellipsis
+                      )
                   ),
                   Text(
                     DateFormat('dd MMM yyyy').format(job.timestamp),
@@ -453,6 +475,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
                   ),
                 ],
               ),
+              // Optional: Quick Reject Action (Only for Pending)
               if (job.status == 'Pending') ...[
                 const SizedBox(height: 10),
                 Align(
@@ -477,6 +500,8 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
     );
   }
 
+  // --- QUICK REJECT DIALOG ---
+  // Allows Admin to reject a pending complaint without opening the details screen.
   void _markAsInvalid(BuildContext context, ComplaintModel job) {
     String reason = "";
     showDialog(
@@ -495,6 +520,7 @@ class _AdminComplaintListState extends State<AdminComplaintList> {
             child: const Text("Reject"),
             onPressed: () async {
               if (reason.isNotEmpty) {
+                // Call service to update Firestore
                 await ComplaintService().markAsInvalid(job.id, reason);
                 if (mounted) Navigator.pop(context);
               }

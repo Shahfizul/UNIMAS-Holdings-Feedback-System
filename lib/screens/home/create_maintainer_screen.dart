@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 
+// Screen for Admins to register new Maintainer (Staff) accounts.
+// These accounts are auto-approved so staff can start working immediately.
 class CreateMaintainerScreen extends StatefulWidget {
   const CreateMaintainerScreen({super.key});
 
@@ -9,18 +11,21 @@ class CreateMaintainerScreen extends StatefulWidget {
 }
 
 class _CreateMaintainerScreenState extends State<CreateMaintainerScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>(); // Key for form validation
   final AuthService _auth = AuthService();
 
-  // State Variables
+  // --- FORM STATE VARIABLES ---
   String email = '';
   String password = '';
   String fullName = '';
   String contactNumber = '';
-  String specialization = 'General';
-  bool _obscurePassword = true; // For password visibility toggle
-  bool _isLoading = false;
+  String specialization = 'General'; // Default specialization
 
+  // UI State
+  bool _obscurePassword = true; // Toggles password visibility
+  bool _isLoading = false;      // Shows spinner during registration
+
+  // Dropdown options for staff roles
   final List<String> specializations = [
     'General', 'Plumber', 'Electrician', 'Carpenter', 'IT/Network', 'Cleaner', 'Civil Works'
   ];
@@ -42,141 +47,146 @@ class _CreateMaintainerScreenState extends State<CreateMaintainerScreen> {
           style: TextStyle(color: Color(0xFF003366), fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- HEADER ---
-                  const Text(
-                    "Create New Profile",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Color(0xFF003366)),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    "This account will be auto-approved and ready for job assignment immediately.",
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600], fontFamily: 'Poppins'),
-                  ),
-                  const SizedBox(height: 25),
-
-                  // --- FORM CARD ---
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _sectionHeader("Personal Information"),
-                        const SizedBox(height: 15),
-                        
-                        // Full Name
-                        TextFormField(
-                          decoration: _inputDecoration("Full Name", Icons.person_outline),
-                          onChanged: (val) => fullName = val,
-                          validator: (val) => val == null || val.isEmpty ? 'Name is required' : null,
-                        ),
-                        const SizedBox(height: 15),
-
-                        // Contact Number
-                        TextFormField(
-                          decoration: _inputDecoration("Contact Number", Icons.phone_outlined),
-                          keyboardType: TextInputType.phone,
-                          onChanged: (val) => contactNumber = val,
-                          validator: (val) => val == null || val.isEmpty ? 'Contact is required' : null,
-                        ),
-                        const SizedBox(height: 15),
-
-                        // Specialization Dropdown
-                        DropdownButtonFormField<String>(
-                          value: specialization,
-                          decoration: _inputDecoration("Specialization", Icons.work_outline),
-                          items: specializations.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                          onChanged: (val) => setState(() => specialization = val.toString()),
-                        ),
-
-                        const SizedBox(height: 30),
-                        _sectionHeader("Account Credentials"),
-                        const SizedBox(height: 15),
-
-                        // Email
-                        TextFormField(
-                          decoration: _inputDecoration("Email Address", Icons.email_outlined),
-                          keyboardType: TextInputType.emailAddress,
-                          onChanged: (val) => email = val,
-                          validator: (val) => val == null || !val.contains('@') ? 'Enter a valid email' : null,
-                        ),
-                        const SizedBox(height: 15),
-
-                        // Password with Toggle
-                        TextFormField(
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            labelText: "Default Password",
-                            prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF003366)),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                            ),
-                          ),
-                          onChanged: (val) => password = val,
-                          validator: (val) => val == null || val.length < 6 ? 'Password must be 6+ chars' : null,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // --- SUBMIT BUTTON ---
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF003366),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        elevation: 5,
-                      ),
-                      onPressed: _submitForm,
-                      child: const Text(
-                        "Create Account", 
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- HEADER ---
+              const Text(
+                "Create New Profile",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Color(0xFF003366)),
               ),
-            ),
+              const SizedBox(height: 5),
+              Text(
+                "This account will be auto-approved and ready for job assignment immediately.",
+                style: TextStyle(fontSize: 13, color: Colors.grey[600], fontFamily: 'Poppins'),
+              ),
+              const SizedBox(height: 25),
+
+              // --- FORM CARD ---
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // --- SECTION 1: PERSONAL INFO ---
+                    _sectionHeader("Personal Information"),
+                    const SizedBox(height: 15),
+
+                    // Full Name Field
+                    TextFormField(
+                      decoration: _inputDecoration("Full Name", Icons.person_outline),
+                      onChanged: (val) => fullName = val,
+                      validator: (val) => val == null || val.isEmpty ? 'Name is required' : null,
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Contact Number Field
+                    TextFormField(
+                      decoration: _inputDecoration("Contact Number", Icons.phone_outlined),
+                      keyboardType: TextInputType.phone,
+                      onChanged: (val) => contactNumber = val,
+                      validator: (val) => val == null || val.isEmpty ? 'Contact is required' : null,
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Specialization Dropdown
+                    DropdownButtonFormField<String>(
+                      value: specialization,
+                      decoration: _inputDecoration("Specialization", Icons.work_outline),
+                      items: specializations.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                      onChanged: (val) => setState(() => specialization = val.toString()),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // --- SECTION 2: CREDENTIALS ---
+                    _sectionHeader("Account Credentials"),
+                    const SizedBox(height: 15),
+
+                    // Email Field
+                    TextFormField(
+                      decoration: _inputDecoration("Email Address", Icons.email_outlined),
+                      keyboardType: TextInputType.emailAddress,
+                      onChanged: (val) => email = val,
+                      validator: (val) => val == null || !val.contains('@') ? 'Enter a valid email' : null,
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Password Field (with eye toggle)
+                    TextFormField(
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: "Default Password",
+                        prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF003366)),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                      onChanged: (val) => password = val,
+                      validator: (val) => val == null || val.length < 6 ? 'Password must be 6+ chars' : null,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              // --- SUBMIT BUTTON ---
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF003366),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    elevation: 5,
+                  ),
+                  onPressed: _submitForm,
+                  child: const Text(
+                    "Create Account",
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
           ),
-    );
-  }
-
-  // --- HELPER METHODS ---
-
-  Widget _sectionHeader(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: const TextStyle(
-        fontSize: 12, 
-        fontWeight: FontWeight.bold, 
-        color: Colors.grey, 
-        letterSpacing: 1.0
+        ),
       ),
     );
   }
 
+  // --- UI HELPERS ---
+
+  // Standardizes section headers style
+  Widget _sectionHeader(String title) {
+    return Text(
+      title.toUpperCase(),
+      style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey,
+          letterSpacing: 1.0
+      ),
+    );
+  }
+
+  // Standardizes text field styling (Border, Icon, Color)
   InputDecoration _inputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
@@ -199,10 +209,13 @@ class _CreateMaintainerScreenState extends State<CreateMaintainerScreen> {
     );
   }
 
+  // --- SUBMISSION LOGIC ---
+  // Validates form, calls AuthService to create user, and handles success/error.
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      
+      setState(() => _isLoading = true); // Show spinner
+
+      // Call the specialized Admin function that creates user WITHOUT logging out the admin
       String? error = await _auth.createMaintainerAccount(
         email: email,
         password: password,
@@ -211,34 +224,36 @@ class _CreateMaintainerScreenState extends State<CreateMaintainerScreen> {
         specialization: specialization,
       );
 
-      setState(() => _isLoading = false);
+      setState(() => _isLoading = false); // Hide spinner
 
       if (error == null) {
+        // Success: Close screen and show toast
         if (mounted) {
-          Navigator.pop(context); // Close screen
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text("Staff Registered Successfully!"),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            )
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 10),
+                    Text("Staff Registered Successfully!"),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              )
           );
         }
       } else {
+        // Error: Show message (e.g., Email already in use)
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Error: $error"), 
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            )
+              SnackBar(
+                content: Text("Error: $error"),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              )
           );
         }
       }

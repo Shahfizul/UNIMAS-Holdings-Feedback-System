@@ -7,6 +7,8 @@ import '../../services/complaint_service.dart';
 import '../../services/database_service.dart';
 import '../../widgets/simple_video_player.dart';
 
+// Screen displaying the full details of a specific Complaint.
+// Used by Admins (to assign/verify), Maintainers (to view jobs), and Residents (to track progress).
 class ComplaintDetailScreen extends StatefulWidget {
   final ComplaintModel complaint;
   const ComplaintDetailScreen({super.key, required this.complaint});
@@ -16,9 +18,11 @@ class ComplaintDetailScreen extends StatefulWidget {
 }
 
 class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
+  // Temporary state to hold the maintainer selected in the dropdown (for Admins)
   String? selectedMaintainerId;
 
   // --- HELPER: OPEN GALLERY ---
+  // Opens a full-screen image viewer for inspecting evidence photos.
   void _openGallery(BuildContext context, List<String> urls, int initialIndex) {
     Navigator.push(
       context,
@@ -53,14 +57,19 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // We use a StreamBuilder here to listen for real-time updates.
+    // This ensures that if the status changes (e.g., Maintainer finishes job),
+    // the UI updates immediately without needing to refresh.
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('complaints').doc(widget.complaint.id).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
+        // Convert the snapshot back into a ComplaintModel
         var data = snapshot.data!.data() as Map<String, dynamic>;
         ComplaintModel job = ComplaintModel.fromMap(data, widget.complaint.id);
 
+        // Determine Status Color dynamically
         Color statusColor = Colors.grey;
         if (job.status == 'Pending') statusColor = Colors.orange;
         else if (job.status == 'In Progress') statusColor = Colors.blue;
@@ -89,6 +98,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // --- SECTION 1: HEADER & STATUS ---
+                // Displays the big status badge and the submission date.
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
@@ -110,6 +120,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 const SizedBox(height: 24),
 
                 // --- SECTION 2: ISSUE DETAILS ---
+                // Shows Title, Description, Priority, and Category.
                 _buildSectionTitle("Issue Information"),
                 _buildInfoContainer([
                   _detailRow("Title", job.title),
@@ -134,6 +145,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 const SizedBox(height: 24),
 
                 // --- SECTION 3: LOCATION & COMPLAINANT ---
+                // Shows where the issue is and who reported it.
                 _buildSectionTitle("Location & Contact"),
                 _buildInfoContainer([
                   _detailRow("Building", job.building),
@@ -147,13 +159,15 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 const SizedBox(height: 24),
 
                 // --- SECTION 4: EVIDENCE ---
+                // Displays thumbnails of images and the video player if attached.
                 if (job.imageUrls.isNotEmpty || (job.videoUrl != null && job.videoUrl!.isNotEmpty)) ...[
                   _buildSectionTitle("Evidence"),
                   _buildEvidenceContainer(job),
                   const SizedBox(height: 24),
                 ],
 
-                // --- SECTION 5: STAFF INFORMATION (Moved UP) ---
+                // --- SECTION 5: STAFF INFORMATION ---
+                // Fetches and displays details of the assigned Maintainer (if assigned).
                 if (job.status != 'Pending') ...[
                   _buildSectionTitle("Staff Information"),
                   FutureBuilder<DocumentSnapshot>(
@@ -172,7 +186,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                   const SizedBox(height: 24),
                 ],
 
-                // --- SECTION 6: MAINTENANCE REPORT & VERIFICATION (Moved DOWN) ---
+                // --- SECTION 6: MAINTENANCE REPORT & VERIFICATION ---
+                // This section appears when the job is done (Pending Verification or Resolved).
+                // It shows the Digital Completion Report (DCP) details.
                 if (job.status == 'Pending Verification' || job.status == 'Resolved') ...[
                   _buildSectionTitle("Maintenance Report"),
                   Container(
@@ -198,10 +214,11 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                         _detailRow("Findings", job.findings.isNotEmpty ? job.findings : "N/A"),
                         _detailRow("Action Taken", job.actionTaken.isNotEmpty ? job.actionTaken : "N/A"),
                         _detailRow("Final Result", job.inspectionResult.isNotEmpty ? job.inspectionResult : "N/A"),
-                        
+
                         const SizedBox(height: 20),
 
-                        // --- VERIFICATION ACTIONS (If Pending Verification) ---
+                        // --- ACTION BUTTONS (For Admin: Pending Verification) ---
+                        // Approve or Reject the work.
                         if (job.status == 'Pending Verification')
                           Row(
                             children: [
@@ -234,7 +251,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                             ],
                           ),
 
-                        // --- UNDO VERIFICATION (If Resolved) ---
+                        // --- UNDO ACTION (For Admin: Resolved) ---
+                        // Allows reverting a closed job back to verification if clicked by mistake.
                         if (job.status == 'Resolved') ...[
                           const Divider(),
                           const SizedBox(height: 8),
@@ -284,6 +302,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 ],
 
                 // --- SECTION 7: ACTION REQUIRED (Only if Pending) ---
+                // For Admins: Displays a dropdown to assign a maintainer.
                 if (job.status == 'Pending') ...[
                   _buildSectionTitle("Action Required"),
                   Container(
@@ -299,12 +318,13 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       children: [
                         const Text("Assign to Maintainer", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                         const SizedBox(height: 15),
+                        // Fetch list of maintainers from Firestore
                         StreamBuilder<List<UserModel>>(
                           stream: DatabaseService().maintainers,
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) return const LinearProgressIndicator();
                             var maintainers = snapshot.data!;
-                            
+
                             return DropdownButtonFormField<String>(
                               value: selectedMaintainerId,
                               hint: const Text("Select Staff Member"),
@@ -335,6 +355,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                             ),
                             onPressed: () async {
                               if (selectedMaintainerId != null) {
+                                // Calls the service to assign the job
                                 await ComplaintService().assignComplaint(job.id, selectedMaintainerId!);
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Job Assigned Successfully!")));
@@ -352,6 +373,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 ],
 
                 // --- SECTION 8: RESIDENT FEEDBACK ---
+                // Displays the star rating and review after the job is closed and rated.
                 if (job.rating > 0) ...[
                   _buildSectionTitle("Resident Feedback"),
                   _buildFeedbackBox(job),
@@ -374,6 +396,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
+  // Wrapper for grouping details in a white box with shadow
   Widget _buildInfoContainer(List<Widget> children) {
     return Container(
       width: double.infinity,
@@ -391,6 +414,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
+  // Simple key-value text row
   Widget _detailRow(String label, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -404,6 +428,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
+  // Small pill-shaped tag for Priority/Category
   Widget _buildPill(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -416,6 +441,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
+  // Horizontal list of images and optional video player
   Widget _buildEvidenceContainer(ComplaintModel job) {
     return Container(
       width: double.infinity,
@@ -464,6 +490,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
+  // Box displaying the star rating and user review
   Widget _buildFeedbackBox(ComplaintModel job) {
     return Container(
       width: double.infinity,
@@ -488,9 +515,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             job.review.isNotEmpty ? "\"${job.review}\"" : "No written comment provided.",
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontStyle: FontStyle.italic, 
-              color: Colors.amber.shade900,
-              fontWeight: FontWeight.w500
+                fontStyle: FontStyle.italic,
+                color: Colors.amber.shade900,
+                fontWeight: FontWeight.w500
             ),
           )
         ],
@@ -498,6 +525,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
+  // --- REJECT DIALOG ---
+  // Popup allows Admin to provide a reason for rejecting the Maintainer's work.
   Future<void> _showRejectDialog(BuildContext context, String complaintId) async {
     String reason = "";
     await showDialog(
@@ -516,6 +545,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               if (reason.isNotEmpty) {
+                // Calls service to update status back to 'In Progress' with Admin Remarks
                 await ComplaintService().rejectComplaint(complaintId, reason);
                 if (mounted) {
                   Navigator.pop(context); // Close dialog
