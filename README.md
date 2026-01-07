@@ -1,7 +1,7 @@
 # Suggestify - UNIMAS Holdings Feedback System
 
 > **Group:** G02_T22  
-> **Course:** TME3413 Software Engineering Laboratory
+> **Course:** TMA3084 Software Engineering Laboratory
 
 ## 📋 Project Overview
 
